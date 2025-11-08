@@ -9,6 +9,7 @@ wheels/
 # Virtual environments
 .venv
 
-backend-dev-instructions.md
-database-creation-script.sql
 .env
+.pytest_cache
+
+help.txt
