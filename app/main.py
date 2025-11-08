@@ -18,12 +18,12 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Puddle Backend",
     description="""
-    Puddle Backend API provides access to dataset marketplace functionality including:
-    
-    - Dataset catalog with vector similarity search
-    - Vendor and buyer management
-    - AI agent configurations
-    - Column-level dataset metadata
+    Backend API for Puddle, a dataset marketplace platform enabling
+    seamless interaction between dataset vendors and buyers, with AI agent
+    support for enhanced dataset processing and management. 
+    Features include user authentication, dataset management, vector
+    similarity search, chat functionality, and comprehensive API
+    documentation.
     """,
     version="1.0.0",
     lifespan=lifespan,
