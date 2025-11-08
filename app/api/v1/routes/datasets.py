@@ -1,156 +1,212 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+import json
+
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, Body
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, and_, or_, text
 from pydantic import BaseModel
 
 from app.core.db import get_session
+from app.core.auth import get_current_user
 from app.schemas.dataset import DatasetCreate, DatasetRead
+from app.schemas.user import UserRead
 from app.crud import datasets as crud_datasets
 from app.utils.embedding_utils import generate_embedding, build_embedding_input
-
-
-class DatasetSearchQuery(BaseModel):
-    query: str = Query(..., description="The text to find similar datasets for")
-    top_k: int = Query(5, description="Number of results to return", ge=1, le=100)
-
-
-class DatasetSearchResult(BaseModel):
-    results: List[Dict[str, Any]]
-
-
-router = APIRouter(prefix="/datasets", tags=["datasets"])
-
-from app.core.db import get_session
-from app.schemas.dataset import DatasetCreate, DatasetRead
-from app.crud import datasets as crud_datasets
-from app.utils.embedding_utils import generate_embedding, build_embedding_input
-
-
-class DatasetSearchQuery(BaseModel):
-    query: str = Query(..., description="The text to find similar datasets for")
-    top_k: int = Query(5, description="Number of results to return", ge=1, le=100)
-
-
-class DatasetSearchResult(BaseModel):
-    results: List[Dict[str, Any]]
-
 
 router = APIRouter(prefix="/datasets", tags=["datasets"])
 
 
-@router.post(
-    "/",
-    response_model=DatasetRead,
-    status_code=status.HTTP_201_CREATED,
-    summary="Create a new dataset",
-    description="""
-    Create a new dataset with automatic embedding generation.
-    
-    The embedding is generated from:
-    - Domain field
-    - Topics (if provided)
-    - Description
-    - Column information (names and descriptions)
-    
-    The generated embedding can be used for similarity search.
-    """,
-    response_description="The created dataset including its ID and embedding vector",
-)
-async def create_dataset(dataset_in: DatasetCreate, db: AsyncSession = Depends(get_session)):
-    # Build embedding input from domain, topics, description and columns
-    data = dataset_in.dict()
-    embedding_input = build_embedding_input(data)
-    emb = await generate_embedding(embedding_input)
-    data["embedding_input"] = embedding_input
-    data["embedding"] = emb
-    dataset = await crud_datasets.create_dataset(db, DatasetCreate(**data))
-    return dataset
-    # Build embedding input from domain, topics, description and columns
-    data = dataset_in.dict()
-    embedding_input = build_embedding_input(data)
-    emb = await generate_embedding(embedding_input)
-    data["embedding_input"] = embedding_input
-    data["embedding"] = emb
-    dataset = await crud_datasets.create_dataset(db, DatasetCreate(**data))
-    return dataset
+# =============================
+# Dataset Update Model
+# =============================
+class DatasetUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    domain: Optional[str] = None
+    dataset_type: Optional[str] = None
+    granularity: Optional[str] = None
+    pricing_model: Optional[str] = None
+    license: Optional[str] = None
+    topics: Optional[List[str]] = None
+    entities: Optional[List[str]] = None
+    temporal_coverage: Optional[Any] = None
+    geographic_coverage: Optional[Any] = None
+    visibility: Optional[str] = None
+    status: Optional[str] = None
+    columns: Optional[List[Dict[str, Any]]] = None
 
 
-@router.get(
-    "/",
-    response_model=List[DatasetRead],
-    summary="List all datasets",
-    description="Get a paginated list of all datasets in the catalog.",
-    response_description="List of datasets with their metadata and embeddings",
-)
-async def get_datasets(
-    limit: int = Query(100, description="Maximum number of datasets to return", ge=1, le=1000),
-    offset: int = Query(0, description="Number of datasets to skip", ge=0),
+# =============================
+# CREATE DATASET
+# =============================
+@router.post("/", response_model=DatasetRead, status_code=status.HTTP_201_CREATED)
+async def create_dataset(
+    dataset_in: DatasetCreate,
+    current_user: UserRead = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
-    datasets = await crud_datasets.list_datasets(db, limit=limit, offset=offset)
-    return datasets
+    if current_user.role != "vendor":
+        raise HTTPException(status_code=403, detail="Only vendors can create datasets")
+
+    data = dataset_in.dict()
+    data["owner_id"] = str(current_user.id)
+
+    # Build embedding
+    embedding_input = build_embedding_input(data)
+    embedding_vector = await generate_embedding(embedding_input)
+    data["embedding_input"] = embedding_input
+    data["embedding"] = embedding_vector
+
+    dataset = await crud_datasets.create_dataset(db, DatasetCreate(**data))
+    return dataset
 
 
-@router.get(
-    "/{dataset_id}",
-    response_model=DatasetRead,
-    summary="Get a specific dataset",
-    description="Get detailed information about a dataset by its ID.",
-    response_description="The dataset's full information including metadata and embedding",
-    responses={
-        404: {"description": "Dataset not found"},
-    },
-)
+# =============================
+# LIST DATASETS WITH FILTERING
+# =============================
+@router.get("/", response_model=List[DatasetRead])
+async def list_datasets(
+    filters: Optional[str] = Query(None, description="JSON string of dynamic filters"),
+    search: Optional[str] = Query(None, description="Search in title or description"),
+    limit: int = Query(50, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    current_user: UserRead = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """
+    List datasets with optional search and dynamic filters.
+    Buyers only see public datasets.
+    """
+    query = select(crud_datasets.Dataset)
+    where_clauses = []
+
+    # Role-based visibility
+    if current_user.role == "buyer":
+        where_clauses.append(crud_datasets.Dataset.visibility == "public")
+
+    # Parse filters JSON
+    filter_dict = {}
+    if filters:
+        try:
+            filter_dict = json.loads(filters)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="Invalid JSON for filters")
+
+    for key, value in filter_dict.items():
+        if not hasattr(crud_datasets.Dataset, key):
+            continue
+        attr = getattr(crud_datasets.Dataset, key)
+        # Handle list fields
+        if isinstance(value, list):
+            where_clauses.append(attr.contains(value))
+        else:
+            where_clauses.append(attr == value)
+
+    # Full-text search
+    if search:
+        where_clauses.append(
+            or_(
+                crud_datasets.Dataset.title.ilike(f"%{search}%"),
+                crud_datasets.Dataset.description.ilike(f"%{search}%"),
+            )
+        )
+
+    if where_clauses:
+        query = query.where(and_(*where_clauses))
+
+    query = query.limit(limit).offset(offset)
+    result = await db.execute(query)
+    datasets = result.scalars().all()
+    return [DatasetRead.model_validate(ds) for ds in datasets]
+
+
+# =============================
+# GET SINGLE DATASET
+# =============================
+@router.get("/{dataset_id}", response_model=DatasetRead)
 async def get_dataset(
-    dataset_id: str = Path(..., description="The UUID of the dataset to retrieve"),
+    dataset_id: str = Path(...),
+    current_user: UserRead = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
     dataset = await crud_datasets.get_dataset(db, dataset_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
+
+    if current_user.role == "buyer" and dataset.visibility != "public":
+        raise HTTPException(status_code=403, detail="Access denied")
     return dataset
 
 
+# =============================
+# UPDATE DATASET
+# =============================
 @router.put("/{dataset_id}", response_model=DatasetRead)
-async def update_dataset(dataset_id: str, update: dict, db: AsyncSession = Depends(get_session)):
-    dataset = await crud_datasets.update_dataset(db, dataset_id, update)
+async def update_dataset(
+    dataset_id: str,
+    update: DatasetUpdate,
+    current_user: UserRead = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    dataset = await crud_datasets.get_dataset(db, dataset_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
-    return dataset
+
+    if current_user.role != "vendor" or str(dataset.owner_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Not allowed to update this dataset")
+
+    updated_dataset = await crud_datasets.update_dataset(db, dataset_id, update.dict(exclude_none=True))
+    return updated_dataset
 
 
+# =============================
+# DELETE DATASET
+# =============================
 @router.delete("/{dataset_id}")
-async def delete_dataset(dataset_id: str, db: AsyncSession = Depends(get_session)):
+async def delete_dataset(
+    dataset_id: str,
+    current_user: UserRead = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    dataset = await crud_datasets.get_dataset(db, dataset_id)
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+
+    if current_user.role != "vendor" or str(dataset.owner_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Not allowed to delete this dataset")
+
     ok = await crud_datasets.delete_dataset(db, dataset_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Dataset not found")
     return {"deleted": True}
 
 
-@router.post(
-    "/search/embedding",
-    response_model=DatasetSearchResult,
-    summary="Search datasets by semantic similarity",
-    description="""
-    Find datasets similar to a text query using vector similarity search.
-    
-    The query text is converted to an embedding vector using the same model
-    as dataset embeddings (Gemini). Then cosine similarity is computed between
-    the query vector and all dataset vectors to find the most similar matches.
-    
-    Results are sorted by similarity score (highest first).
-    """,
-    response_description="List of datasets ordered by similarity to query",
-)
+# =============================
+# SEARCH DATASETS BY EMBEDDING
+# =============================
+class DatasetSearchQuery(BaseModel):
+    query: str
+    top_k: int = Query(5, ge=1, le=100)
+
+
+class DatasetSearchResult(BaseModel):
+    results: List[Dict[str, Any]]
+
+
+@router.post("/search/embedding", response_model=DatasetSearchResult)
 async def search_by_embedding(
-    query: DatasetSearchQuery = Body(..., description="Search parameters"),
+    query: DatasetSearchQuery = Body(...),
+    current_user: UserRead = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
     emb = await generate_embedding(query.query)
 
-    # Fetch datasets with embeddings and compute cosine similarity in Python (fallback when pgvector ops aren't used)
-    result = await db.execute("SELECT id, title, description, embedding FROM datasets WHERE embedding IS NOT NULL")
+    # Wrap raw SQL string with text()
+    result = await db.execute(
+        text("SELECT id, title, description, embedding, visibility FROM datasets WHERE embedding IS NOT NULL")
+    )
     rows = result.fetchall()
+
     import numpy as np
 
     def cosine(a, b):
@@ -163,38 +219,17 @@ async def search_by_embedding(
     scored = []
     for r in rows:
         emb_db = r[3]
+        vis = r[4]
+
+        if current_user.role == "buyer" and vis != "public":
+            continue
+
         if emb_db is None:
             continue
-        # Coerce embedding types (pgvector.Vector, memoryview, list, tuple) to Python list
-        def coerce_embedding(v):
-            if v is None:
-                return None
-            if isinstance(v, list):
-                return v
-            if isinstance(v, tuple):
-                return list(v)
-            # Some pgvector or driver types are iterable
-            try:
-                return list(v)
-            except Exception:
-                # Try common attribute names
-                if hasattr(v, "embedding"):
-                    try:
-                        return list(v.embedding)
-                    except Exception:
-                        pass
-                if hasattr(v, "vec"):
-                    try:
-                        return list(v.vec)
-                    except Exception:
-                        pass
-                return None
-
-        emb_db_list = coerce_embedding(emb_db)
-        if emb_db_list is None:
-            continue
+        emb_db_list = list(emb_db) if not isinstance(emb_db, list) else emb_db
         score = cosine(emb, emb_db_list)
         scored.append({"id": r[0], "title": r[1], "description": r[2], "score": score})
 
     scored.sort(key=lambda x: x["score"], reverse=True)
-    return {"results": scored[:query.top_k]}
+    return {"results": scored[: query.top_k]}
+

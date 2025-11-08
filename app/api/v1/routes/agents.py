@@ -3,8 +3,10 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
+from app.core.auth import get_current_user
 from app.schemas.agent import AgentCreate, AgentRead
 from app.crud import agents as crud_agents
+from app.schemas.user import UserRead
 
 router = APIRouter(
     prefix="/agents",
@@ -12,127 +14,135 @@ router = APIRouter(
     responses={404: {"description": "Agent not found"}},
 )
 
-
+# =========================================================
+# CREATE NEW AI AGENT (Admin or Vendor)
+# =========================================================
 @router.post(
     "/",
     response_model=AgentRead,
     status_code=status.HTTP_201_CREATED,
     summary="Create a new AI agent",
-    description="""
-    Create a new AI agent configuration for dataset processing.
-    
-    An AI agent can:
-    - Process and analyze datasets
-    - Generate embeddings and metadata
-    - Handle data transformations
-    - Compute dataset statistics
-    """,
-    response_description="The created AI agent configuration",
 )
 async def create_agent(
-    agent_in: AgentCreate = Body(
-        ...,
-        description="Agent configuration to create",
-        example={
-            "vendor_id": "uuid-here",
-            "name": "Data Embedding Agent",
-            "description": "Generates embeddings for dataset search",
-            "model_used": "gemini-embedding-001",
-            "config": {"batch_size": 32, "compute_stats": True},
-        },
-    ),
+    agent_in: AgentCreate = Body(...),
     db: AsyncSession = Depends(get_session),
+    current_user: UserRead = Depends(get_current_user),
 ):
+    """Create a new AI agent (Admin or Vendor only)."""
+    if current_user.role not in {"admin", "vendor"}:
+        raise HTTPException(status_code=403, detail="Only admins or vendors can create agents")
+
+    # Vendors can only create agents under their own vendor_id
+    if current_user.role == "vendor" and str(agent_in.vendor_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Vendors can only create agents for their own account")
+
     agent = await crud_agents.create_agent(db, agent_in)
     return agent
 
 
+# =========================================================
+# LIST AGENTS
+# =========================================================
 @router.get(
     "/",
     response_model=List[AgentRead],
     summary="List AI agents",
-    description="""
-    Get a paginated list of AI agents. Can be filtered by:
-    - Vendor ID (to get all agents for a specific vendor)
-    - Active status (to get only active/inactive agents)
-    """,
-    response_description="List of AI agent configurations",
 )
-async def get_agents(
-    vendor_id: Optional[str] = Query(None, description="Filter agents by vendor ID"),
+async def list_agents(
+    vendor_id: Optional[str] = Query(None, description="Filter by vendor ID"),
     active: Optional[bool] = Query(None, description="Filter by active status"),
-    limit: int = Query(100, description="Maximum number of agents to return", ge=1, le=1000),
+    limit: int = Query(100, description="Max number of agents", ge=1, le=1000),
     offset: int = Query(0, description="Number of agents to skip", ge=0),
     db: AsyncSession = Depends(get_session),
+    current_user: UserRead = Depends(get_current_user),
 ):
+    """
+    - Admin: list all agents.
+    - Vendor: list only own agents.
+    - Buyer: read-only list view of all agents (marketplace discovery).
+    """
+    if current_user.role == "vendor":
+        vendor_id = str(current_user.id)
+
     agents = await crud_agents.list_agents(db, vendor_id=vendor_id, active=active, limit=limit, offset=offset)
     return agents
 
 
+# =========================================================
+# GET A SPECIFIC AGENT
+# =========================================================
 @router.get(
     "/{agent_id}",
     response_model=AgentRead,
     summary="Get a specific AI agent",
-    description="Get detailed information about an AI agent by its ID.",
-    response_description="The agent's full configuration",
 )
 async def get_agent(
-    agent_id: str = Path(..., description="The UUID of the agent to retrieve"),
+    agent_id: str = Path(..., description="The UUID of the agent"),
     db: AsyncSession = Depends(get_session),
+    current_user: UserRead = Depends(get_current_user),
 ):
     agent = await crud_agents.get_agent(db, agent_id)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
+
+    # Vendors can only view their own agents
+    if current_user.role == "vendor" and str(agent.vendor_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Not authorized to view this agent")
+
     return agent
 
 
+# =========================================================
+# UPDATE AN AGENT
+# =========================================================
 @router.put(
     "/{agent_id}",
     response_model=AgentRead,
     summary="Update an AI agent",
-    description="""
-    Update an AI agent's configuration.
-    
-    Common updates include:
-    - Changing the model or parameters
-    - Updating the description
-    - Enabling/disabling the agent
-    """,
-    response_description="The updated agent configuration",
 )
 async def update_agent(
-    agent_id: str = Path(..., description="The UUID of the agent to update"),
-    update: Dict = Body(
-        ...,
-        description="Fields to update",
-        example={
-            "config": {"batch_size": 64, "compute_stats": True},
-            "active": False,
-            "description": "Updated agent description",
-        },
-    ),
+    agent_id: str,
+    update_data: Dict = Body(...),
     db: AsyncSession = Depends(get_session),
+    current_user: UserRead = Depends(get_current_user),
 ):
-    agent = await crud_agents.update_agent(db, agent_id, update)
+    """Update an AI agent's configuration (Admin or owning Vendor)."""
+    agent = await crud_agents.get_agent(db, agent_id)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
-    return agent
+
+    if current_user.role not in {"admin", "vendor"}:
+        raise HTTPException(status_code=403, detail="Only admins or vendors can update agents")
+
+    if current_user.role == "vendor" and str(agent.vendor_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Vendors can only update their own agents")
+
+    updated_agent = await crud_agents.update_agent(db, agent_id, update_data)
+    return updated_agent
 
 
+# =========================================================
+# DELETE AN AGENT
+# =========================================================
 @router.delete(
     "/{agent_id}",
     summary="Delete an AI agent",
-    description="Delete an AI agent configuration.",
-    responses={
-        200: {"description": "Agent successfully deleted"},
-        404: {"description": "Agent not found"},
-    },
 )
 async def delete_agent(
-    agent_id: str = Path(..., description="The UUID of the agent to delete"),
+    agent_id: str,
     db: AsyncSession = Depends(get_session),
+    current_user: UserRead = Depends(get_current_user),
 ):
-    ok = await crud_agents.delete_agent(db, agent_id)
-    if not ok:
+    """Delete an AI agent (Admin or owning Vendor)."""
+    agent = await crud_agents.get_agent(db, agent_id)
+    if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
+
+    if current_user.role not in {"admin", "vendor"}:
+        raise HTTPException(status_code=403, detail="Only admins or vendors can delete agents")
+
+    if current_user.role == "vendor" and str(agent.vendor_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Vendors can only delete their own agents")
+
+    await crud_agents.delete_agent(db, agent_id)
     return {"deleted": True}
