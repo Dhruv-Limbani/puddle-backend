@@ -11,6 +11,7 @@ from app.core.auth import get_current_user
 from app.schemas.dataset import DatasetCreate, DatasetRead
 from app.schemas.user import UserRead
 from app.crud import datasets as crud_datasets
+from app.crud import vendors as crud_vendors
 from app.utils.embedding_utils import generate_embedding, build_embedding_input
 
 router = APIRouter(prefix="/datasets", tags=["datasets"])
@@ -45,11 +46,24 @@ async def create_dataset(
     current_user: UserRead = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
-    if current_user.role != "vendor":
-        raise HTTPException(status_code=403, detail="Only vendors can create datasets")
+    if current_user.role not in {"vendor", "admin"}:
+        raise HTTPException(status_code=403, detail="Only vendors or admins can create datasets")
+
+    # Validate vendor ownership
+    vendor = await crud_vendors.get_vendor_by_user_id(db, current_user.id) if current_user.role == "vendor" else None
+    if current_user.role == "vendor":
+        if not vendor:
+            raise HTTPException(status_code=400, detail="Vendor profile not found")
+        if str(vendor.id) != str(dataset_in.vendor_id):
+            raise HTTPException(status_code=403, detail="You can only create datasets for your vendor profile")
+
+    # Ensure vendor exists when admin creates datasets
+    if current_user.role == "admin":
+        vendor_check = await crud_vendors.get_vendor(db, str(dataset_in.vendor_id))
+        if not vendor_check:
+            raise HTTPException(status_code=400, detail="Vendor not found for provided vendor_id")
 
     data = dataset_in.dict()
-    data["owner_id"] = str(current_user.id)
 
     # Build embedding
     embedding_input = build_embedding_input(data)
@@ -57,8 +71,8 @@ async def create_dataset(
     data["embedding_input"] = embedding_input
     data["embedding"] = embedding_vector
 
-    dataset = await crud_datasets.create_dataset(db, DatasetCreate(**data))
-    return dataset
+    created = await crud_datasets.create_dataset(db, DatasetCreate(**data))
+    return DatasetRead.model_validate(created)
 
 
 # =============================
@@ -117,7 +131,7 @@ async def list_datasets(
     query = query.limit(limit).offset(offset)
     result = await db.execute(query)
     datasets = result.scalars().all()
-    return [DatasetRead.model_validate(ds) for ds in datasets]
+    return [crud_datasets.to_dataset_read(ds) for ds in datasets]
 
 
 # =============================
@@ -152,7 +166,13 @@ async def update_dataset(
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
-    if current_user.role != "vendor" or str(dataset.owner_id) != str(current_user.id):
+    if current_user.role == "admin":
+        pass
+    elif current_user.role == "vendor":
+        vendor = await crud_vendors.get_vendor_by_user_id(db, current_user.id)
+        if not vendor or str(vendor.id) != str(dataset.vendor_id):
+            raise HTTPException(status_code=403, detail="Not allowed to update this dataset")
+    else:
         raise HTTPException(status_code=403, detail="Not allowed to update this dataset")
 
     updated_dataset = await crud_datasets.update_dataset(db, dataset_id, update.dict(exclude_none=True))
@@ -172,7 +192,13 @@ async def delete_dataset(
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
-    if current_user.role != "vendor" or str(dataset.owner_id) != str(current_user.id):
+    if current_user.role == "admin":
+        pass
+    elif current_user.role == "vendor":
+        vendor = await crud_vendors.get_vendor_by_user_id(db, current_user.id)
+        if not vendor or str(vendor.id) != str(dataset.vendor_id):
+            raise HTTPException(status_code=403, detail="Not allowed to delete this dataset")
+    else:
         raise HTTPException(status_code=403, detail="Not allowed to delete this dataset")
 
     ok = await crud_datasets.delete_dataset(db, dataset_id)

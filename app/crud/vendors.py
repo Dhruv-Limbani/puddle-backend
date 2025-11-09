@@ -1,4 +1,5 @@
 from typing import List, Optional, Union
+from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -33,6 +34,18 @@ async def get_vendor(db: AsyncSession, vendor_id: str) -> Optional[VendorRead]:
     Only active vendors are returned.
     """
     vendor_obj = await db.get(Vendor, vendor_id)
+    if vendor_obj and (not hasattr(vendor_obj, "is_active") or vendor_obj.is_active):
+        return VendorRead.model_validate(vendor_obj)
+    return None
+
+
+async def get_vendor_by_user_id(db: AsyncSession, user_id: Union[str, UUID]) -> Optional[VendorRead]:
+    """
+    Fetch the vendor profile associated with a user.
+    """
+    query = select(Vendor).where(Vendor.user_id == str(user_id))
+    result = await db.execute(query)
+    vendor_obj = result.scalars().first()
     if vendor_obj and (not hasattr(vendor_obj, "is_active") or vendor_obj.is_active):
         return VendorRead.model_validate(vendor_obj)
     return None

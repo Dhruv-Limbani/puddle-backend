@@ -1,4 +1,5 @@
-from typing import List, Optional
+from typing import List, Optional, Union
+from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -25,7 +26,7 @@ async def get_agent(db: AsyncSession, agent_id: str) -> Optional[AIAgent]:
 async def list_agents(
     db: AsyncSession,
     *,
-    vendor_id: Optional[str] = None,
+    vendor_id: Optional[Union[str, UUID]] = None,
     active: Optional[bool] = None,
     limit: int = 100,
     offset: int = 0,
@@ -33,7 +34,12 @@ async def list_agents(
     """List AI agents with optional filters."""
     q = select(AIAgent)
     if vendor_id:
-        q = q.where(AIAgent.vendor_id == vendor_id)
+        target_type = getattr(AIAgent.vendor_id.type, "python_type", str)
+        if target_type is UUID:
+            value = vendor_id if isinstance(vendor_id, UUID) else UUID(str(vendor_id))
+        else:
+            value = str(vendor_id)
+        q = q.where(AIAgent.vendor_id == value)
     if active is not None:
         q = q.where(AIAgent.active == active)
     q = q.limit(limit).offset(offset)

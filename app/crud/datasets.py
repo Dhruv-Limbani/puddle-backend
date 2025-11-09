@@ -6,11 +6,21 @@ from app.schemas.dataset import DatasetCreate, DatasetRead
 from app.utils.embedding_utils import build_and_embed
 
 
+def to_dataset_read(dataset_obj: Dataset) -> DatasetRead:
+    """Serialize a Dataset ORM instance into DatasetRead without triggering lazy relationships."""
+    payload: Dict[str, Any] = {}
+    for field in DatasetRead.model_fields.keys():
+        if field == "columns":
+            continue
+        payload[field] = getattr(dataset_obj, field, None)
+    return DatasetRead(**payload)
+
+
 async def create_dataset(db: AsyncSession, dataset_in: Union[DatasetCreate, dict]) -> DatasetRead:
     if isinstance(dataset_in, dict):
         dataset_in = DatasetCreate(**dataset_in)
 
-    ds_dict: Dict[str, Any] = dataset_in.model_dump()
+    ds_dict: Dict[str, Any] = dataset_in.model_dump(exclude_none=True)
 
     if not ds_dict.get("embedding") or not ds_dict.get("embedding_input"):
         embedding_vector = await build_and_embed(ds_dict)
@@ -21,18 +31,18 @@ async def create_dataset(db: AsyncSession, dataset_in: Union[DatasetCreate, dict
     db.add(dataset_obj)
     await db.commit()
     await db.refresh(dataset_obj)
-    return DatasetRead.model_validate(dataset_obj)
+    return to_dataset_read(dataset_obj)
 
 
 async def get_dataset(db: AsyncSession, dataset_id: str) -> Optional[DatasetRead]:
     dataset_obj = await db.get(Dataset, dataset_id)
-    return DatasetRead.model_validate(dataset_obj) if dataset_obj else None
+    return to_dataset_read(dataset_obj) if dataset_obj else None
 
 
 async def list_datasets(db: AsyncSession, *, limit: int = 100, offset: int = 0) -> List[DatasetRead]:
     result = await db.execute(select(Dataset).limit(limit).offset(offset))
     datasets = result.scalars().all()
-    return [DatasetRead.model_validate(ds) for ds in datasets]
+    return [to_dataset_read(ds) for ds in datasets]
 
 
 async def update_dataset(db: AsyncSession, dataset_id: str, update_data: dict) -> Optional[DatasetRead]:
@@ -57,7 +67,7 @@ async def update_dataset(db: AsyncSession, dataset_id: str, update_data: dict) -
     db.add(dataset_obj)
     await db.commit()
     await db.refresh(dataset_obj)
-    return DatasetRead.model_validate(dataset_obj)
+    return to_dataset_read(dataset_obj)
 
 
 async def delete_dataset(db: AsyncSession, dataset_id: str) -> bool:

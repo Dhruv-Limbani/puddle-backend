@@ -66,7 +66,7 @@ async def create_vendor(
         )
 
     vendor_data = vendor_in.model_dump()
-    vendor_data["user_id"] = str(current_user.id)
+    vendor_data["user_id"] = current_user.id
 
     vendor = await crud_vendors.create_vendor(db, vendor_data)
     return vendor
