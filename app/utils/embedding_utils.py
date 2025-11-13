@@ -1,5 +1,4 @@
 # app/utils/embedding_utils.py
-
 from typing import List, Dict, Any
 import os
 import logging
@@ -14,32 +13,30 @@ def build_embedding_input(ds: Dict[str, Any]) -> str:
     """
     Build a text string suitable for embedding from a dataset dictionary.
 
-    Considers the following fields (if present):
+    Considers:
     - domain
     - topics
     - description (fallback to title)
     - columns (name + description)
-
-    Args:
-        ds (Dict[str, Any]): Dataset dictionary.
-
-    Returns:
-        str: Concatenated text ready for embedding.
     """
     domain: str = ds.get("domain") or ""
-    topics: List[str] = ds.get("topics") or []
+    topics = ds.get("topics") or []
     description: str = ds.get("description") or ds.get("title") or ""
-    columns: List[Dict[str, Any]] = ds.get("columns") or []
+    columns = ds.get("columns") or []
 
     col_texts: List[str] = []
     for col in columns:
-        if isinstance(col, dict):
-            name: str = col.get("name", "")
-            desc: str = col.get("description", "")
-            if name and desc:
-                col_texts.append(f"{name} — {desc}")
-            elif name:
-                col_texts.append(name)
+        # Accept either dicts or pydantic models
+        if hasattr(col, "model_dump"):
+            c = col.model_dump()
+        else:
+            c = dict(col) if isinstance(col, dict) else {}
+        name = c.get("name", "")
+        desc = c.get("description", "")
+        if name and desc:
+            col_texts.append(f"{name} — {desc}")
+        elif name:
+            col_texts.append(name)
 
     topics_text: str = ", ".join(topics) if isinstance(topics, (list, tuple)) else str(topics)
 
@@ -64,25 +61,15 @@ async def generate_embedding(
     output_dim: int = 1536
 ) -> List[float]:
     """
-    Generate embedding for the given text using Google Gemini.
-
-    The embedding is generated asynchronously using a thread to avoid blocking
-    the event loop. Returns a zero-vector if the API key is missing or the call fails.
-
-    Args:
-        text (str): Input text to embed.
-        model (str): Model name to use for embedding. Default: "gemini-embedding-001".
-        output_dim (int): Dimensionality of the embedding vector. Default: 1536.
-
-    Returns:
-        List[float]: Embedding vector.
+    Generate embedding for the given text using Google Gemini (if configured).
+    Returns a zero vector when the API key is missing or call fails.
     """
     try:
-        # Import Google Gemini client dynamically
+        # Try import paths for genai
         try:
             from google import genai
             from google.genai import types
-        except ImportError:
+        except Exception:
             import genai
             from genai import types
 
@@ -101,10 +88,10 @@ async def generate_embedding(
                     output_dimensionality=output_dim,
                 ),
             )
+            # Try common response shapes
             try:
                 return list(resp.embeddings[0].values)
             except Exception:
-                # Handle alternative response shapes
                 if isinstance(resp, dict) and resp.get("embeddings"):
                     return list(resp["embeddings"][0]["values"])
                 raise
@@ -123,15 +110,7 @@ async def build_and_embed(
     output_dim: int = 1536
 ) -> List[float]:
     """
-    Convenience function: Build embedding input from dataset and generate embedding.
-
-    Args:
-        ds (Dict[str, Any]): Dataset dictionary.
-        model (str): Model name to use for embedding.
-        output_dim (int): Dimensionality of embedding vector.
-
-    Returns:
-        List[float]: Embedding vector.
+    Convenience: build embedding input from dataset and generate embedding.
     """
     text: str = build_embedding_input(ds)
     return await generate_embedding(text, model=model, output_dim=output_dim)
