@@ -3,6 +3,8 @@ from typing import List, Dict, Any
 import os
 import logging
 import asyncio
+from google import genai
+from google.genai import types
 
 from app.core.config import settings
 
@@ -65,13 +67,6 @@ async def generate_embedding(
     Returns a zero vector when the API key is missing or call fails.
     """
     try:
-        # Try import paths for genai
-        try:
-            from google import genai
-            from google.genai import types
-        except Exception:
-            import genai
-            from genai import types
 
         api_key: str = settings.GEMINI_API_KEY or os.getenv("GEMINI_API_KEY")
         if not api_key:
