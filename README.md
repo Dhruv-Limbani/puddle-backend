@@ -18,4 +18,3 @@ ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=1440
 
 uv add "passlib>=1.7.4" "bcrypt==4.0.1"
-
