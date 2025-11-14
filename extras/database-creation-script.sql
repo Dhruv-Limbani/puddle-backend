@@ -123,11 +123,6 @@ CREATE TABLE datasets (
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
-CREATE INDEX ON datasets USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
-CREATE INDEX idx_datasets_domain ON datasets(domain);
-CREATE INDEX idx_datasets_vendor_id ON datasets(vendor_id);
-CREATE INDEX idx_datasets_title_trgm ON datasets USING gin (title gin_trgm_ops);
-
 
 -- =============================
 -- 6. DATASET COLUMNS
@@ -141,7 +136,29 @@ CREATE TABLE dataset_columns (
     sample_values JSONB,
     created_at TIMESTAMP DEFAULT NOW()
 );
-CREATE INDEX idx_dataset_columns_dataset_id ON dataset_columns(dataset_id);
+
+-- Vector search
+CREATE INDEX datasets_embedding_ivfflat_idx 
+ON datasets USING ivfflat (embedding vector_cosine_ops) 
+WITH (lists = 100);
+
+-- Filters
+CREATE INDEX idx_datasets_visibility ON datasets(visibility);
+CREATE INDEX idx_datasets_vendor_id ON datasets(vendor_id);
+CREATE INDEX idx_datasets_domain ON datasets(domain);
+
+-- Text search
+CREATE INDEX idx_datasets_title_trgm 
+ON datasets USING gin (title gin_trgm_ops);
+
+-- Optimized buyer search
+CREATE INDEX idx_datasets_public_title_trgm 
+ON datasets USING gin (title gin_trgm_ops) 
+WHERE visibility = 'public';
+
+-- Dataset columns lookup
+CREATE INDEX idx_dataset_columns_dataset_id 
+ON dataset_columns(dataset_id);
 
 
 -- =============================

@@ -1,0 +1,184 @@
+.buyer-dashboard-container {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.buyer-dashboard-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  padding: 40px;
+  width: 100%;
+  max-width: 700px;
+  animation: slideUp 0.3s ease-out;
+}
+
+.buyer-dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding-bottom: 24px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.buyer-dashboard-header h1 {
+  color: #333;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.buyer-dashboard-header p {
+  color: #666;
+  margin-top: 4px;
+}
+
+.buyer-dashboard-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.buyer-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.buyer-alerts .success,
+.buyer-alerts .error {
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.buyer-alerts .success {
+  background: #efe;
+  border: 1px solid #cfc;
+  color: #2f855a;
+}
+
+.buyer-alerts .error {
+  background: #fee;
+  border: 1px solid #fcc;
+  color: #c53030;
+}
+
+.buyer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.buyer-form .form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px 20px;
+}
+
+.buyer-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.buyer-form .form-group.full {
+  grid-column: 1 / -1;
+}
+
+.buyer-form label {
+  color: #333;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.buyer-form label span {
+  color: #f97316;
+}
+
+.buyer-form input,
+.buyer-form textarea {
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 2px solid #e0e0e0;
+  font-size: 15px;
+  transition: border-color 0.2s ease;
+  font-family: inherit;
+}
+
+.buyer-form textarea {
+  resize: vertical;
+}
+
+.buyer-form input:focus,
+.buyer-form textarea:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.buyer-dashboard-actions .secondary,
+.buyer-dashboard-actions .danger,
+.form-actions .primary,
+.form-actions .secondary {
+  padding: 12px 20px;
+  border-radius: 10px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.secondary {
+  background: #edf2f7;
+  color: #2d3748;
+}
+
+.danger {
+  background: #f56565;
+  color: white;
+}
+
+.primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.primary:hover,
+.secondary:hover,
+.danger:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+@media (max-width: 640px) {
+  .buyer-dashboard-card {
+    padding: 24px;
+  }
+
+  .buyer-dashboard-header {
+    flex-direction: column;
+  }
+
+  .buyer-dashboard-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .buyer-dashboard-actions button,
+  .form-actions button {
+    width: 100%;
+  }
+}
+

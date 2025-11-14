@@ -1,4 +1,5 @@
 from typing import List, Optional, Dict
+from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -6,6 +7,7 @@ from app.core.db import get_session
 from app.core.auth import get_current_user
 from app.schemas.agent import AgentCreate, AgentRead
 from app.crud import agents as crud_agents
+from app.crud import vendors as crud_vendors
 from app.schemas.user import UserRead
 
 router = APIRouter(
@@ -32,9 +34,16 @@ async def create_agent(
     if current_user.role not in {"admin", "vendor"}:
         raise HTTPException(status_code=403, detail="Only admins or vendors can create agents")
 
-    # Vendors can only create agents under their own vendor_id
-    if current_user.role == "vendor" and str(agent_in.vendor_id) != str(current_user.id):
-        raise HTTPException(status_code=403, detail="Vendors can only create agents for their own account")
+    if current_user.role == "vendor":
+        vendor = await crud_vendors.get_vendor_by_user_id(db, current_user.id)
+        if not vendor:
+            raise HTTPException(status_code=400, detail="Vendor profile not found")
+        if str(agent_in.vendor_id) != str(vendor.id):
+            raise HTTPException(status_code=403, detail="Vendors can only create agents for their own vendor profile")
+    else:
+        vendor_exists = await crud_vendors.get_vendor(db, str(agent_in.vendor_id))
+        if not vendor_exists:
+            raise HTTPException(status_code=400, detail="Vendor not found for provided vendor_id")
 
     agent = await crud_agents.create_agent(db, agent_in)
     return agent
@@ -49,7 +58,7 @@ async def create_agent(
     summary="List AI agents",
 )
 async def list_agents(
-    vendor_id: Optional[str] = Query(None, description="Filter by vendor ID"),
+    vendor_id: Optional[UUID] = Query(None, description="Filter by vendor ID"),
     active: Optional[bool] = Query(None, description="Filter by active status"),
     limit: int = Query(100, description="Max number of agents", ge=1, le=1000),
     offset: int = Query(0, description="Number of agents to skip", ge=0),
@@ -62,7 +71,10 @@ async def list_agents(
     - Buyer: read-only list view of all agents (marketplace discovery).
     """
     if current_user.role == "vendor":
-        vendor_id = str(current_user.id)
+        vendor = await crud_vendors.get_vendor_by_user_id(db, current_user.id)
+        if not vendor:
+            return []
+        vendor_id = vendor.id
 
     agents = await crud_agents.list_agents(db, vendor_id=vendor_id, active=active, limit=limit, offset=offset)
     return agents
@@ -111,11 +123,14 @@ async def update_agent(
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
 
-    if current_user.role not in {"admin", "vendor"}:
+    if current_user.role == "admin":
+        pass
+    elif current_user.role == "vendor":
+        vendor = await crud_vendors.get_vendor_by_user_id(db, current_user.id)
+        if not vendor or str(agent.vendor_id) != str(vendor.id):
+            raise HTTPException(status_code=403, detail="Vendors can only update their own agents")
+    else:
         raise HTTPException(status_code=403, detail="Only admins or vendors can update agents")
-
-    if current_user.role == "vendor" and str(agent.vendor_id) != str(current_user.id):
-        raise HTTPException(status_code=403, detail="Vendors can only update their own agents")
 
     updated_agent = await crud_agents.update_agent(db, agent_id, update_data)
     return updated_agent
@@ -138,11 +153,14 @@ async def delete_agent(
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
 
-    if current_user.role not in {"admin", "vendor"}:
+    if current_user.role == "admin":
+        pass
+    elif current_user.role == "vendor":
+        vendor = await crud_vendors.get_vendor_by_user_id(db, current_user.id)
+        if not vendor or str(agent.vendor_id) != str(vendor.id):
+            raise HTTPException(status_code=403, detail="Vendors can only delete their own agents")
+    else:
         raise HTTPException(status_code=403, detail="Only admins or vendors can delete agents")
-
-    if current_user.role == "vendor" and str(agent.vendor_id) != str(current_user.id):
-        raise HTTPException(status_code=403, detail="Vendors can only delete their own agents")
 
     await crud_agents.delete_agent(db, agent_id)
     return {"deleted": True}

@@ -73,7 +73,10 @@ class Vendor(Base):
     __tablename__ = "vendors"
 
     id = uuid_column(primary_key=True)
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
+    if PG_UUID is not None:
+        user_id = Column(PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
+    else:
+        user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
     name = Column(String(255), nullable=False)
     industry_focus = Column(String(255))
     description = Column(Text)
@@ -104,7 +107,10 @@ class Buyer(Base):
     __tablename__ = "buyers"
 
     id = uuid_column(primary_key=True)
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
+    if PG_UUID is not None:
+        user_id = Column(PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
+    else:
+        user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
     name = Column(String(255), nullable=False)
     organization = Column(String(255))
     contact_email = Column(String(255))
@@ -131,7 +137,10 @@ class AIAgent(Base):
     __tablename__ = "ai_agents"
 
     id = uuid_column(primary_key=True)
-    vendor_id = Column(String(36), ForeignKey("vendors.id", ondelete="CASCADE"))
+    if PG_UUID is not None:
+        vendor_id = Column(PG_UUID(as_uuid=True), ForeignKey("vendors.id", ondelete="CASCADE"))
+    else:
+        vendor_id = Column(String(36), ForeignKey("vendors.id", ondelete="CASCADE"))
     name = Column(String(255))
     description = Column(Text)
     model_used = Column(String(100), default="gemini-embedding-001")
@@ -152,7 +161,10 @@ class Dataset(Base):
     __tablename__ = "datasets"
 
     id = uuid_column(primary_key=True)
-    vendor_id = Column(String(36), ForeignKey("vendors.id", ondelete="CASCADE"), nullable=False)
+    if PG_UUID is not None:
+        vendor_id = Column(PG_UUID(as_uuid=True), ForeignKey("vendors.id", ondelete="CASCADE"), nullable=False)
+    else:
+        vendor_id = Column(String(36), ForeignKey("vendors.id", ondelete="CASCADE"), nullable=False)
     title = Column(Text, nullable=False)
     status = Column(String(50), default="active")
     visibility = Column(String(50), default="public")
@@ -183,7 +195,10 @@ class DatasetColumn(Base):
     __tablename__ = "dataset_columns"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    dataset_id = Column(String(36), ForeignKey("datasets.id", ondelete="CASCADE"), nullable=False)
+    if PG_UUID is not None:
+        dataset_id = Column(PG_UUID(as_uuid=True), ForeignKey("datasets.id", ondelete="CASCADE"), nullable=False)
+    else:
+        dataset_id = Column(String(36), ForeignKey("datasets.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(255), nullable=False)
     description = Column(Text)
     data_type = Column(String(100))
@@ -201,9 +216,14 @@ class Chat(Base):
     __tablename__ = "chats"
 
     id = uuid_column(primary_key=True)
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"))
-    vendor_id = Column(String(36), ForeignKey("vendors.id", ondelete="SET NULL"))
-    agent_id = Column(String(36), ForeignKey("ai_agents.id", ondelete="SET NULL"))
+    if PG_UUID is not None:
+        user_id = Column(PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
+        vendor_id = Column(PG_UUID(as_uuid=True), ForeignKey("vendors.id", ondelete="SET NULL"))
+        agent_id = Column(PG_UUID(as_uuid=True), ForeignKey("ai_agents.id", ondelete="SET NULL"))
+    else:
+        user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"))
+        vendor_id = Column(String(36), ForeignKey("vendors.id", ondelete="SET NULL"))
+        agent_id = Column(String(36), ForeignKey("ai_agents.id", ondelete="SET NULL"))
     chat_type = Column(String(50), nullable=False)
     title = Column(String(255))
     is_active = Column(Boolean, default=True)

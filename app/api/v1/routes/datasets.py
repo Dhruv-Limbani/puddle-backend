@@ -1,235 +1,165 @@
-from typing import List, Dict, Any, Optional
-import json
-
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, Body
+# app/api/v1/routes/datasets.py
+from typing import List, Optional, Dict, Any
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_, text
-from pydantic import BaseModel
+from sqlalchemy import select
+from uuid import UUID
 
 from app.core.db import get_session
 from app.core.auth import get_current_user
-from app.schemas.dataset import DatasetCreate, DatasetRead
+from app.schemas.dataset import DatasetCreate, DatasetRead, DatasetUpdate
 from app.schemas.user import UserRead
 from app.crud import datasets as crud_datasets
+from app.crud import vendors as crud_vendors
+from app.models.models import Dataset, Vendor
 from app.utils.embedding_utils import generate_embedding, build_embedding_input
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/datasets", tags=["datasets"])
 
 
-# =============================
-# Dataset Update Model
-# =============================
-class DatasetUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    domain: Optional[str] = None
-    dataset_type: Optional[str] = None
-    granularity: Optional[str] = None
-    pricing_model: Optional[str] = None
-    license: Optional[str] = None
-    topics: Optional[List[str]] = None
-    entities: Optional[List[str]] = None
-    temporal_coverage: Optional[Any] = None
-    geographic_coverage: Optional[Any] = None
-    visibility: Optional[str] = None
-    status: Optional[str] = None
-    columns: Optional[List[Dict[str, Any]]] = None
+async def _get_vendor_for_user(db: AsyncSession, user_id: str) -> Optional[Vendor]:
+    result = await db.execute(select(Vendor).where(Vendor.user_id == str(user_id)))
+    return result.scalars().first()
 
 
-# =============================
-# CREATE DATASET
-# =============================
+async def verify_vendor_owns_dataset(dataset: Dataset, current_user: UserRead, db: AsyncSession):
+    if current_user.role == "admin":
+        return True
+    if current_user.role != "vendor":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    vendor = await _get_vendor_for_user(db, current_user.id)
+    if not vendor or str(vendor.id) != str(dataset.vendor_id):
+        raise HTTPException(status_code=403, detail="This dataset is not yours")
+    return True
+
+
+# CREATE DATASET (with nested columns)
 @router.post("/", response_model=DatasetRead, status_code=status.HTTP_201_CREATED)
 async def create_dataset(
     dataset_in: DatasetCreate,
     current_user: UserRead = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
-    if current_user.role != "vendor":
-        raise HTTPException(status_code=403, detail="Only vendors can create datasets")
+    if current_user.role not in {"admin", "vendor"}:
+        raise HTTPException(status_code=403, detail="Only vendors or admins can create datasets")
 
-    data = dataset_in.dict()
-    data["owner_id"] = str(current_user.id)
+    if current_user.role == "vendor":
+        vendor = await _get_vendor_for_user(db, current_user.id)
+        if not vendor:
+            raise HTTPException(status_code=400, detail="Vendor profile missing")
+        if str(vendor.id) != str(dataset_in.vendor_id):
+            raise HTTPException(status_code=403, detail="You can only add datasets to your own vendor")
+    else:
+        vendor = await crud_vendors.get_vendor(db, str(dataset_in.vendor_id))
+        if not vendor:
+            raise HTTPException(status_code=400, detail="Vendor does not exist")
 
-    # Build embedding
+    data = dataset_in.model_dump(exclude_none=True)
+
+    # Build embedding input and vector
     embedding_input = build_embedding_input(data)
-    embedding_vector = await generate_embedding(embedding_input)
     data["embedding_input"] = embedding_input
-    data["embedding"] = embedding_vector
+    data["embedding"] = await generate_embedding(embedding_input)
 
-    dataset = await crud_datasets.create_dataset(db, DatasetCreate(**data))
-    return dataset
+    created = await crud_datasets.create_dataset_with_columns(db, data)
+    return created
 
 
-# =============================
-# LIST DATASETS WITH FILTERING
-# =============================
+# LIST DATASETS
 @router.get("/", response_model=List[DatasetRead])
 async def list_datasets(
-    filters: Optional[str] = Query(None, description="JSON string of dynamic filters"),
-    search: Optional[str] = Query(None, description="Search in title or description"),
-    limit: int = Query(50, ge=1, le=1000),
+    search: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     current_user: UserRead = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
-    """
-    List datasets with optional search and dynamic filters.
-    Buyers only see public datasets.
-    """
-    query = select(crud_datasets.Dataset)
-    where_clauses = []
-
-    # Role-based visibility
-    if current_user.role == "buyer":
-        where_clauses.append(crud_datasets.Dataset.visibility == "public")
-
-    # Parse filters JSON
-    filter_dict = {}
-    if filters:
-        try:
-            filter_dict = json.loads(filters)
-        except json.JSONDecodeError:
-            raise HTTPException(status_code=400, detail="Invalid JSON for filters")
-
-    for key, value in filter_dict.items():
-        if not hasattr(crud_datasets.Dataset, key):
-            continue
-        attr = getattr(crud_datasets.Dataset, key)
-        # Handle list fields
-        if isinstance(value, list):
-            where_clauses.append(attr.contains(value))
-        else:
-            where_clauses.append(attr == value)
-
-    # Full-text search
-    if search:
-        where_clauses.append(
-            or_(
-                crud_datasets.Dataset.title.ilike(f"%{search}%"),
-                crud_datasets.Dataset.description.ilike(f"%{search}%"),
-            )
-        )
-
-    if where_clauses:
-        query = query.where(and_(*where_clauses))
-
-    query = query.limit(limit).offset(offset)
-    result = await db.execute(query)
-    datasets = result.scalars().all()
-    return [DatasetRead.model_validate(ds) for ds in datasets]
+    results = await crud_datasets.list_datasets(
+        db=db,
+        role=current_user.role,
+        search=search,
+        limit=limit,
+        offset=offset,
+    )
+    return results
 
 
-# =============================
-# GET SINGLE DATASET
-# =============================
+# GET DATASET (with nested columns)
 @router.get("/{dataset_id}", response_model=DatasetRead)
 async def get_dataset(
-    dataset_id: str = Path(...),
+    dataset_id: str,
     current_user: UserRead = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
-    dataset = await crud_datasets.get_dataset(db, dataset_id)
+    dataset = await crud_datasets.get_dataset_with_columns(db, dataset_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
     if current_user.role == "buyer" and dataset.visibility != "public":
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=403, detail="Not authorized")
+
     return dataset
 
 
-# =============================
-# UPDATE DATASET
-# =============================
+# UPDATE DATASET (all-or-nothing; columns replace if provided)
 @router.put("/{dataset_id}", response_model=DatasetRead)
 async def update_dataset(
     dataset_id: str,
-    update: DatasetUpdate,
+    update_in: DatasetUpdate,
     current_user: UserRead = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
-    dataset = await crud_datasets.get_dataset(db, dataset_id)
-    if not dataset:
+    dataset_obj = await crud_datasets.get_dataset_obj(db, dataset_id)
+    if not dataset_obj:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
-    if current_user.role != "vendor" or str(dataset.owner_id) != str(current_user.id):
-        raise HTTPException(status_code=403, detail="Not allowed to update this dataset")
+    await verify_vendor_owns_dataset(dataset_obj, current_user, db)
 
-    updated_dataset = await crud_datasets.update_dataset(db, dataset_id, update.dict(exclude_none=True))
-    return updated_dataset
+    update_data = update_in.model_dump(exclude_none=True)
+    # If columns provided, pass them through; CRUD detects and replaces accordingly.
+    updated = await crud_datasets.update_dataset_with_columns(db, dataset_id, update_data)
+    if not updated:
+        raise HTTPException(status_code=500, detail="Failed to update dataset")
+    return updated
 
 
-# =============================
 # DELETE DATASET
-# =============================
-@router.delete("/{dataset_id}")
+@router.delete("/{dataset_id}", status_code=204)
 async def delete_dataset(
     dataset_id: str,
     current_user: UserRead = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
-    dataset = await crud_datasets.get_dataset(db, dataset_id)
-    if not dataset:
+    dataset_obj = await crud_datasets.get_dataset_obj(db, dataset_id)
+    if not dataset_obj:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
-    if current_user.role != "vendor" or str(dataset.owner_id) != str(current_user.id):
-        raise HTTPException(status_code=403, detail="Not allowed to delete this dataset")
+    await verify_vendor_owns_dataset(dataset_obj, current_user, db)
 
     ok = await crud_datasets.delete_dataset(db, dataset_id)
     if not ok:
-        raise HTTPException(status_code=404, detail="Dataset not found")
-    return {"deleted": True}
+        raise HTTPException(status_code=500, detail="Failed to delete dataset")
+    return None
 
 
-# =============================
-# SEARCH DATASETS BY EMBEDDING
-# =============================
+# EMBEDDING SEARCH
 class DatasetSearchQuery(BaseModel):
     query: str
-    top_k: int = Query(5, ge=1, le=100)
+    top_k: int = 5
 
 
-class DatasetSearchResult(BaseModel):
-    results: List[Dict[str, Any]]
-
-
-@router.post("/search/embedding", response_model=DatasetSearchResult)
+@router.post("/search/embedding")
 async def search_by_embedding(
-    query: DatasetSearchQuery = Body(...),
+    body: DatasetSearchQuery,
     current_user: UserRead = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
-    emb = await generate_embedding(query.query)
-
-    # Wrap raw SQL string with text()
-    result = await db.execute(
-        text("SELECT id, title, description, embedding, visibility FROM datasets WHERE embedding IS NOT NULL")
+    emb = await generate_embedding(body.query)
+    results = await crud_datasets.search_by_embedding(
+        db=db,
+        embedding=emb,
+        top_k=body.top_k,
+        role=current_user.role,
     )
-    rows = result.fetchall()
-
-    import numpy as np
-
-    def cosine(a, b):
-        a = np.array(a, dtype=float)
-        b = np.array(b, dtype=float)
-        if np.linalg.norm(a) == 0 or np.linalg.norm(b) == 0:
-            return 0.0
-        return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
-
-    scored = []
-    for r in rows:
-        emb_db = r[3]
-        vis = r[4]
-
-        if current_user.role == "buyer" and vis != "public":
-            continue
-
-        if emb_db is None:
-            continue
-        emb_db_list = list(emb_db) if not isinstance(emb_db, list) else emb_db
-        score = cosine(emb, emb_db_list)
-        scored.append({"id": r[0], "title": r[1], "description": r[2], "score": score})
-
-    scored.sort(key=lambda x: x["score"], reverse=True)
-    return {"results": scored[: query.top_k]}
-
+    return {"results": results}

@@ -33,10 +33,6 @@ app = FastAPI(
             "description": "Dataset operations including vector similarity search",
         },
         {
-            "name": "dataset-columns",
-            "description": "Dataset column metadata and schema information",
-        },
-        {
             "name": "vendors",
             "description": "Dataset vendor/provider management",
         },

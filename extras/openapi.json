@@ -719,7 +719,8 @@
                   "schema":{
                      "anyOf":[
                         {
-                           "type":"string"
+                           "type":"string",
+                           "format":"uuid"
                         },
                         {
                            "type":"null"
@@ -1027,7 +1028,6 @@
                "datasets"
             ],
             "summary":"List Datasets",
-            "description":"List datasets with optional search and dynamic filters.\nBuyers only see public datasets.",
             "operationId":"list_datasets_api_v1_datasets__get",
             "security":[
                {
@@ -1037,24 +1037,6 @@
                }
             ],
             "parameters":[
-               {
-                  "name":"filters",
-                  "in":"query",
-                  "required":false,
-                  "schema":{
-                     "anyOf":[
-                        {
-                           "type":"string"
-                        },
-                        {
-                           "type":"null"
-                        }
-                     ],
-                     "description":"JSON string of dynamic filters",
-                     "title":"Filters"
-                  },
-                  "description":"JSON string of dynamic filters"
-               },
                {
                   "name":"search",
                   "in":"query",
@@ -1068,10 +1050,8 @@
                            "type":"null"
                         }
                      ],
-                     "description":"Search in title or description",
                      "title":"Search"
-                  },
-                  "description":"Search in title or description"
+                  }
                },
                {
                   "name":"limit",
@@ -1079,7 +1059,7 @@
                   "required":false,
                   "schema":{
                      "type":"integer",
-                     "maximum":1000,
+                     "maximum":500,
                      "minimum":1,
                      "default":50,
                      "title":"Limit"
@@ -1255,15 +1235,8 @@
                }
             ],
             "responses":{
-               "200":{
-                  "description":"Successful Response",
-                  "content":{
-                     "application/json":{
-                        "schema":{
-                           
-                        }
-                     }
-                  }
+               "204":{
+                  "description":"Successful Response"
                },
                "422":{
                   "description":"Validation Error",
@@ -1301,7 +1274,7 @@
                   "content":{
                      "application/json":{
                         "schema":{
-                           "$ref":"#/components/schemas/DatasetSearchResult"
+                           
                         }
                      }
                   }
@@ -1324,256 +1297,6 @@
                   ]
                }
             ]
-         }
-      },
-      "/api/v1/dataset-columns/":{
-         "post":{
-            "tags":[
-               "dataset-columns"
-            ],
-            "summary":"Create Column",
-            "operationId":"create_column_api_v1_dataset_columns__post",
-            "requestBody":{
-               "content":{
-                  "application/json":{
-                     "schema":{
-                        "$ref":"#/components/schemas/DatasetColumnCreate"
-                     }
-                  }
-               },
-               "required":true
-            },
-            "responses":{
-               "201":{
-                  "description":"Successful Response",
-                  "content":{
-                     "application/json":{
-                        "schema":{
-                           "$ref":"#/components/schemas/DatasetColumnRead"
-                        }
-                     }
-                  }
-               },
-               "422":{
-                  "description":"Validation Error",
-                  "content":{
-                     "application/json":{
-                        "schema":{
-                           "$ref":"#/components/schemas/HTTPValidationError"
-                        }
-                     }
-                  }
-               }
-            },
-            "security":[
-               {
-                  "OAuth2PasswordBearer":[
-                     
-                  ]
-               }
-            ]
-         }
-      },
-      "/api/v1/dataset-columns/dataset/{dataset_id}":{
-         "get":{
-            "tags":[
-               "dataset-columns"
-            ],
-            "summary":"Get Columns",
-            "operationId":"get_columns_api_v1_dataset_columns_dataset__dataset_id__get",
-            "security":[
-               {
-                  "OAuth2PasswordBearer":[
-                     
-                  ]
-               }
-            ],
-            "parameters":[
-               {
-                  "name":"dataset_id",
-                  "in":"path",
-                  "required":true,
-                  "schema":{
-                     "type":"string",
-                     "format":"uuid",
-                     "title":"Dataset Id"
-                  }
-               }
-            ],
-            "responses":{
-               "200":{
-                  "description":"Successful Response",
-                  "content":{
-                     "application/json":{
-                        "schema":{
-                           "type":"array",
-                           "items":{
-                              "$ref":"#/components/schemas/DatasetColumnRead"
-                           },
-                           "title":"Response Get Columns Api V1 Dataset Columns Dataset  Dataset Id  Get"
-                        }
-                     }
-                  }
-               },
-               "422":{
-                  "description":"Validation Error",
-                  "content":{
-                     "application/json":{
-                        "schema":{
-                           "$ref":"#/components/schemas/HTTPValidationError"
-                        }
-                     }
-                  }
-               }
-            }
-         }
-      },
-      "/api/v1/dataset-columns/{col_id}":{
-         "get":{
-            "tags":[
-               "dataset-columns"
-            ],
-            "summary":"Get Column",
-            "operationId":"get_column_api_v1_dataset_columns__col_id__get",
-            "security":[
-               {
-                  "OAuth2PasswordBearer":[
-                     
-                  ]
-               }
-            ],
-            "parameters":[
-               {
-                  "name":"col_id",
-                  "in":"path",
-                  "required":true,
-                  "schema":{
-                     "type":"integer",
-                     "title":"Col Id"
-                  }
-               }
-            ],
-            "responses":{
-               "200":{
-                  "description":"Successful Response",
-                  "content":{
-                     "application/json":{
-                        "schema":{
-                           "$ref":"#/components/schemas/DatasetColumnRead"
-                        }
-                     }
-                  }
-               },
-               "422":{
-                  "description":"Validation Error",
-                  "content":{
-                     "application/json":{
-                        "schema":{
-                           "$ref":"#/components/schemas/HTTPValidationError"
-                        }
-                     }
-                  }
-               }
-            }
-         },
-         "put":{
-            "tags":[
-               "dataset-columns"
-            ],
-            "summary":"Update Column",
-            "operationId":"update_column_api_v1_dataset_columns__col_id__put",
-            "security":[
-               {
-                  "OAuth2PasswordBearer":[
-                     
-                  ]
-               }
-            ],
-            "parameters":[
-               {
-                  "name":"col_id",
-                  "in":"path",
-                  "required":true,
-                  "schema":{
-                     "type":"integer",
-                     "title":"Col Id"
-                  }
-               }
-            ],
-            "requestBody":{
-               "required":true,
-               "content":{
-                  "application/json":{
-                     "schema":{
-                        "type":"object",
-                        "additionalProperties":true,
-                        "title":"Update"
-                     }
-                  }
-               }
-            },
-            "responses":{
-               "200":{
-                  "description":"Successful Response",
-                  "content":{
-                     "application/json":{
-                        "schema":{
-                           "$ref":"#/components/schemas/DatasetColumnRead"
-                        }
-                     }
-                  }
-               },
-               "422":{
-                  "description":"Validation Error",
-                  "content":{
-                     "application/json":{
-                        "schema":{
-                           "$ref":"#/components/schemas/HTTPValidationError"
-                        }
-                     }
-                  }
-               }
-            }
-         },
-         "delete":{
-            "tags":[
-               "dataset-columns"
-            ],
-            "summary":"Delete Column",
-            "operationId":"delete_column_api_v1_dataset_columns__col_id__delete",
-            "security":[
-               {
-                  "OAuth2PasswordBearer":[
-                     
-                  ]
-               }
-            ],
-            "parameters":[
-               {
-                  "name":"col_id",
-                  "in":"path",
-                  "required":true,
-                  "schema":{
-                     "type":"integer",
-                     "title":"Col Id"
-                  }
-               }
-            ],
-            "responses":{
-               "204":{
-                  "description":"Successful Response"
-               },
-               "422":{
-                  "description":"Validation Error",
-                  "content":{
-                     "application/json":{
-                        "schema":{
-                           "$ref":"#/components/schemas/HTTPValidationError"
-                        }
-                     }
-                  }
-               }
-            }
          }
       },
       "/api/v1/auth/register":{
@@ -3274,13 +2997,8 @@
             ],
             "title":"ChatRead"
          },
-         "DatasetColumnCreate":{
+         "DatasetColumn":{
             "properties":{
-               "dataset_id":{
-                  "type":"string",
-                  "format":"uuid",
-                  "title":"Dataset Id"
-               },
                "name":{
                   "type":"string",
                   "title":"Name"
@@ -3321,18 +3039,12 @@
             },
             "type":"object",
             "required":[
-               "dataset_id",
                "name"
             ],
-            "title":"DatasetColumnCreate"
+            "title":"DatasetColumn"
          },
          "DatasetColumnRead":{
             "properties":{
-               "dataset_id":{
-                  "type":"string",
-                  "format":"uuid",
-                  "title":"Dataset Id"
-               },
                "name":{
                   "type":"string",
                   "title":"Name"
@@ -3375,23 +3087,16 @@
                   "title":"Id"
                },
                "created_at":{
-                  "anyOf":[
-                     {
-                        "type":"string",
-                        "format":"date-time"
-                     },
-                     {
-                        "type":"null"
-                     }
-                  ],
+                  "type":"string",
+                  "format":"date-time",
                   "title":"Created At"
                }
             },
             "type":"object",
             "required":[
-               "dataset_id",
                "name",
-               "id"
+               "id",
+               "created_at"
             ],
             "title":"DatasetColumnRead"
          },
@@ -3544,8 +3249,7 @@
                   "anyOf":[
                      {
                         "items":{
-                           "additionalProperties":true,
-                           "type":"object"
+                           "$ref":"#/components/schemas/DatasetColumn"
                         },
                         "type":"array"
                      },
@@ -3737,8 +3441,7 @@
                   "anyOf":[
                      {
                         "items":{
-                           "additionalProperties":true,
-                           "type":"object"
+                           "$ref":"#/components/schemas/DatasetColumnRead"
                         },
                         "type":"array"
                      },
@@ -3779,27 +3482,13 @@
                   "title":"Id"
                },
                "created_at":{
-                  "anyOf":[
-                     {
-                        "type":"string",
-                        "format":"date-time"
-                     },
-                     {
-                        "type":"null"
-                     }
-                  ],
+                  "type":"string",
+                  "format":"date-time",
                   "title":"Created At"
                },
                "updated_at":{
-                  "anyOf":[
-                     {
-                        "type":"string",
-                        "format":"date-time"
-                     },
-                     {
-                        "type":"null"
-                     }
-                  ],
+                  "type":"string",
+                  "format":"date-time",
                   "title":"Updated At"
                }
             },
@@ -3807,7 +3496,10 @@
             "required":[
                "vendor_id",
                "title",
-               "id"
+               "columns",
+               "id",
+               "created_at",
+               "updated_at"
             ],
             "title":"DatasetRead"
          },
@@ -3819,8 +3511,6 @@
                },
                "top_k":{
                   "type":"integer",
-                  "maximum":100.0,
-                  "minimum":1.0,
                   "title":"Top K",
                   "default":5
                }
@@ -3830,23 +3520,6 @@
                "query"
             ],
             "title":"DatasetSearchQuery"
-         },
-         "DatasetSearchResult":{
-            "properties":{
-               "results":{
-                  "items":{
-                     "additionalProperties":true,
-                     "type":"object"
-                  },
-                  "type":"array",
-                  "title":"Results"
-               }
-            },
-            "type":"object",
-            "required":[
-               "results"
-            ],
-            "title":"DatasetSearchResult"
          },
          "DatasetUpdate":{
             "properties":{
@@ -3930,10 +3603,7 @@
                "topics":{
                   "anyOf":[
                      {
-                        "items":{
-                           "type":"string"
-                        },
-                        "type":"array"
+                        
                      },
                      {
                         "type":"null"
@@ -3944,10 +3614,7 @@
                "entities":{
                   "anyOf":[
                      {
-                        "items":{
-                           "type":"string"
-                        },
-                        "type":"array"
+                        
                      },
                      {
                         "type":"null"
@@ -4003,8 +3670,7 @@
                   "anyOf":[
                      {
                         "items":{
-                           "additionalProperties":true,
-                           "type":"object"
+                           "$ref":"#/components/schemas/DatasetColumn"
                         },
                         "type":"array"
                      },
@@ -4290,6 +3956,18 @@
                      }
                   ],
                   "title":"Founded Year"
+               },
+               "user_id":{
+                  "anyOf":[
+                     {
+                        "type":"string",
+                        "format":"uuid"
+                     },
+                     {
+                        "type":"null"
+                     }
+                  ],
+                  "title":"User Id"
                }
             },
             "type":"object",
@@ -4437,11 +4115,6 @@
                   ],
                   "title":"Founded Year"
                },
-               "id":{
-                  "type":"string",
-                  "format":"uuid",
-                  "title":"Id"
-               },
                "user_id":{
                   "anyOf":[
                      {
@@ -4453,6 +4126,11 @@
                      }
                   ],
                   "title":"User Id"
+               },
+               "id":{
+                  "type":"string",
+                  "format":"uuid",
+                  "title":"Id"
                },
                "created_at":{
                   "anyOf":[
@@ -4505,10 +4183,6 @@
       {
          "name":"datasets",
          "description":"Dataset operations including vector similarity search"
-      },
-      {
-         "name":"dataset-columns",
-         "description":"Dataset column metadata and schema information"
       },
       {
          "name":"vendors",

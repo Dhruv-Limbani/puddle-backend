@@ -18,6 +18,7 @@ class VendorCreate(BaseModel):
     address: Optional[str] = None
     organization_type: Optional[str] = None
     founded_year: Optional[int] = None
+    user_id: Optional[UUID] = None
 
 
 class VendorRead(VendorCreate):
