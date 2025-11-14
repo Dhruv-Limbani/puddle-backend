@@ -28,6 +28,8 @@ export default function Login() {
       const response = await login(email, password)
       if (response.user?.role === 'vendor' || response.user?.role === 'admin') {
         navigate('/vendor-dashboard')
+      } else if (response.user?.role === 'buyer') {
+        navigate('/buyer-dashboard')
       } else {
         navigate('/dashboard')
       }

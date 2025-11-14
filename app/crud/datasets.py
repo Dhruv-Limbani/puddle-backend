@@ -2,6 +2,7 @@
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
+from sqlalchemy.orm import selectinload
 from app.models.models import Dataset, DatasetColumn
 from app.schemas.dataset import (
     DatasetCreate,
@@ -17,6 +18,25 @@ from app.utils.embedding_utils import build_embedding_input, generate_embedding
 # Helper: serialize dataset with nested columns
 # ======================================================
 def serialize_dataset(ds: Dataset) -> DatasetRead:
+    # Explicitly serialize columns to avoid lazy-loading issues
+    columns_list = []
+    if hasattr(ds, 'columns') and ds.columns is not None:
+        try:
+            columns_list = [
+                DatasetColumnRead(
+                    id=c.id,
+                    name=c.name,
+                    description=c.description,
+                    data_type=c.data_type,
+                    sample_values=c.sample_values,
+                    created_at=c.created_at,
+                )
+                for c in ds.columns
+            ]
+        except Exception as e:
+            print(f"Error serializing columns: {e}")
+            columns_list = []
+    
     return DatasetRead(
         id=ds.id,
         vendor_id=ds.vendor_id,
@@ -37,7 +57,7 @@ def serialize_dataset(ds: Dataset) -> DatasetRead:
         embedding=ds.embedding,
         created_at=ds.created_at,
         updated_at=ds.updated_at,
-        columns=[DatasetColumnRead.model_validate(c) for c in ds.columns] if ds.columns else [],
+        columns=columns_list,
     )
 
 
@@ -70,7 +90,12 @@ async def create_dataset_with_columns(db: AsyncSession, data: Dict[str, Any]) ->
             db.add(DatasetColumn(dataset_id=dataset.id, **col_payload))
 
     await db.commit()
-    await db.refresh(dataset)
+    result = await db.execute(
+        select(Dataset)
+        .options(selectinload(Dataset.columns))
+        .where(Dataset.id == dataset.id)
+    )
+    dataset = result.scalars().first()
     return serialize_dataset(dataset)
 
 
@@ -78,10 +103,14 @@ async def create_dataset_with_columns(db: AsyncSession, data: Dict[str, Any]) ->
 # GET dataset + columns
 # ======================================================
 async def get_dataset_with_columns(db: AsyncSession, dataset_id: str) -> Optional[DatasetRead]:
-    ds = await db.get(Dataset, dataset_id)
+    result = await db.execute(
+        select(Dataset)
+            .options(selectinload(Dataset.columns))
+            .where(Dataset.id == dataset_id)
+    )
+    ds = result.scalars().first()
     if not ds:
         return None
-    await db.refresh(ds)
     return serialize_dataset(ds)
 
 
@@ -111,7 +140,9 @@ async def list_datasets(
         ilike = f"%{search}%"
         query = query.where(Dataset.title.ilike(ilike))
 
-    result = await db.execute(query.limit(limit).offset(offset))
+    result = await db.execute(
+        query.options(selectinload(Dataset.columns)).limit(limit).offset(offset)
+    )
     datasets = result.scalars().unique().all()
     return [serialize_dataset(ds) for ds in datasets]
 
@@ -170,7 +201,14 @@ async def update_dataset_with_columns(
 
     db.add(ds)
     await db.commit()
-    await db.refresh(ds)
+    
+    # Reload with columns to ensure relationship is populated
+    result = await db.execute(
+        select(Dataset)
+        .options(selectinload(Dataset.columns))
+        .where(Dataset.id == dataset_id)
+    )
+    ds = result.scalars().first()
     return serialize_dataset(ds)
 
 

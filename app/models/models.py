@@ -107,7 +107,10 @@ class Buyer(Base):
     __tablename__ = "buyers"
 
     id = uuid_column(primary_key=True)
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
+    if PG_UUID is not None:
+        user_id = Column(PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
+    else:
+        user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
     name = Column(String(255), nullable=False)
     organization = Column(String(255))
     contact_email = Column(String(255))

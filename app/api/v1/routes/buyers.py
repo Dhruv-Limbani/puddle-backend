@@ -32,13 +32,57 @@ async def create_buyer(
     if current_user.role != "buyer":
         raise HTTPException(status_code=403, detail="Only buyers can create buyer profiles")
 
-    # Prevent duplicate profile creation
-    existing_buyers = await crud_buyers.list_buyers(db)
-    if any(b.user_id == current_user.id for b in existing_buyers):
+    existing = await crud_buyers.get_buyer_by_user_id(db, current_user.id)
+    if existing:
         raise HTTPException(status_code=400, detail="Buyer profile already exists for this user")
 
     buyer = await crud_buyers.create_buyer(db, buyer_in, user_id=current_user.id)
     return buyer
+
+
+# =========================================================
+# GET CURRENT BUYER PROFILE
+# =========================================================
+@router.get(
+    "/me",
+    response_model=BuyerRead,
+    summary="Get current buyer profile",
+)
+async def get_my_buyer(
+    db: AsyncSession = Depends(get_session),
+    current_user: UserRead = Depends(get_current_user),
+):
+    if current_user.role != "buyer":
+        raise HTTPException(status_code=403, detail="Only buyers can access this endpoint")
+
+    buyer = await crud_buyers.get_buyer_by_user_id(db, current_user.id)
+    if not buyer:
+        raise HTTPException(status_code=404, detail="Buyer profile not found")
+    return buyer
+
+
+# =========================================================
+# UPDATE CURRENT BUYER PROFILE
+# =========================================================
+@router.put(
+    "/me",
+    response_model=BuyerRead,
+    summary="Update current buyer profile",
+)
+async def update_my_buyer(
+    update: Dict = Body(..., description="Fields to update"),
+    db: AsyncSession = Depends(get_session),
+    current_user: UserRead = Depends(get_current_user),
+):
+    if current_user.role != "buyer":
+        raise HTTPException(status_code=403, detail="Only buyers can update their profile")
+
+    buyer = await crud_buyers.get_buyer_by_user_id(db, current_user.id)
+    if not buyer:
+        raise HTTPException(status_code=404, detail="Buyer profile not found")
+
+    updated_buyer = await crud_buyers.update_buyer(db, str(buyer.id), update)
+    return updated_buyer
 
 
 # =========================================================

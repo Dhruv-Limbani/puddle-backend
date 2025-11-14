@@ -1,4 +1,5 @@
-from typing import List, Optional
+from typing import List, Optional, Union
+from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -13,7 +14,10 @@ async def create_buyer(db: AsyncSession, buyer_in: BuyerCreate, user_id: Optiona
     """
     buyer_data = buyer_in.model_dump()
     if user_id:
-        buyer_data["user_id"] = user_id
+        if isinstance(user_id, UUID):
+            buyer_data["user_id"] = user_id
+        else:
+            buyer_data["user_id"] = UUID(str(user_id))
     buyer = Buyer(**buyer_data)
     db.add(buyer)
     await db.commit()
@@ -26,6 +30,19 @@ async def get_buyer(db: AsyncSession, buyer_id: str) -> Optional[Buyer]:
     result = await db.execute(select(Buyer).where(Buyer.id == buyer_id))
     buyer = result.scalars().first()
     return buyer
+
+
+async def get_buyer_by_user_id(db: AsyncSession, user_id: Union[str, UUID]) -> Optional[BuyerRead]:
+    """Fetch buyer profile associated with a user."""
+    try:
+        value = user_id if isinstance(user_id, UUID) else UUID(str(user_id))
+    except ValueError:
+        value = str(user_id)
+
+    query = select(Buyer).where(Buyer.user_id == value)
+    result = await db.execute(query)
+    buyer = result.scalars().first()
+    return BuyerRead.model_validate(buyer) if buyer else None
 
 
 async def list_buyers(db: AsyncSession, *, limit: int = 100, offset: int = 0) -> List[BuyerRead]:

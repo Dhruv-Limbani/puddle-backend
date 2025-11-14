@@ -34,8 +34,8 @@ class DatasetCreate(BaseModel):
     geographic_coverage: Optional[Any] = None
     visibility: Optional[str] = "public"
     status: Optional[str] = "active"
-    # Accept nested columns directly in dataset create
-    columns: Optional[List[DatasetColumn]] = None
+    # At least one column is required when creating a dataset
+    columns: List[DatasetColumn] = Field(..., min_length=1)
     embedding_input: Optional[str] = None
     embedding: Optional[List[float]] = None
 
@@ -62,6 +62,6 @@ class DatasetRead(DatasetCreate):
     id: UUID
     created_at: datetime
     updated_at: datetime
-    columns: Optional[List[DatasetColumnRead]]
+    columns: Optional[List[DatasetColumnRead]] = None
 
     model_config = {"from_attributes": True}

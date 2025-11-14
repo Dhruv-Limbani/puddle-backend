@@ -1,0 +1,194 @@
+.marketplace-container {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #f7f8fc;
+}
+
+.marketplace-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 25px 70px rgba(15, 23, 42, 0.15);
+  padding: 40px;
+  width: 100%;
+  max-width: 1200px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.marketplace-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.marketplace-header h1 {
+  font-size: 32px;
+  margin-bottom: 6px;
+  color: #1f2933;
+}
+
+.marketplace-header p {
+  color: #6b7280;
+}
+
+.search-input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 2px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 16px;
+}
+
+.marketplace-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  color: #1f2933;
+}
+
+.section-header span {
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.dataset-grid,
+.vendor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.dataset-card,
+.vendor-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #fff;
+  transition: box-shadow 0.2s ease;
+}
+
+.dataset-card:hover,
+.vendor-card:hover {
+  box-shadow: 0 12px 30px rgba(99, 102, 241, 0.12);
+}
+
+.dataset-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dataset-card-header h3,
+.vendor-card h3 {
+  font-size: 20px;
+  margin: 0;
+  color: #1f2933;
+}
+
+.dataset-description,
+.vendor-description {
+  color: #4b5563;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.dataset-meta,
+.vendor-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 13px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4c1d95;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.vendor-contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: #2563eb;
+  font-size: 14px;
+}
+
+.marketplace-empty {
+  border: 1px dashed #d1d5db;
+  padding: 18px;
+  border-radius: 12px;
+  color: #6b7280;
+  text-align: center;
+}
+
+.marketplace-error {
+  padding: 16px;
+  border-radius: 12px;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  text-align: center;
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge.visibility-public {
+  background: #ecfccb;
+  color: #3f6212;
+}
+
+.badge.visibility-private {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+@media (max-width: 768px) {
+  .marketplace-card {
+    padding: 24px;
+  }
+
+  .marketplace-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .search-input {
+    width: 100%;
+  }
+}
+

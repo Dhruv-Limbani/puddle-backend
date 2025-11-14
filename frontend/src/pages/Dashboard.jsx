@@ -12,6 +12,7 @@ export default function Dashboard() {
   }
 
   const isVendorOrAdmin = user?.role === 'vendor' || user?.role === 'admin'
+  const isBuyer = user?.role === 'buyer'
 
   return (
     <div className="dashboard-container">
@@ -50,16 +51,21 @@ export default function Dashboard() {
           <p>Authentication successful! You are now logged in.</p>
           <p>This is your dashboard. More features coming soon...</p>
 
-          {isVendorOrAdmin && (
-            <div className="dashboard-actions">
-              <button
-                className="primary-action"
-                onClick={() => navigate('/vendor-dashboard')}
-              >
+          <div className="dashboard-actions">
+            <button className="primary-action ghost" onClick={() => navigate('/marketplace')}>
+              Browse Marketplace
+            </button>
+            {isVendorOrAdmin && (
+              <button className="primary-action" onClick={() => navigate('/vendor-dashboard')}>
                 Open Vendor Dashboard
               </button>
-            </div>
-          )}
+            )}
+            {isBuyer && (
+              <button className="primary-action outline" onClick={() => navigate('/buyer-dashboard')}>
+                Open Buyer Dashboard
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
