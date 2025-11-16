@@ -80,7 +80,7 @@ Make sure to replace the placeholders in `DATABASE_URL` with your actual databas
 Run:
 
 ```bash
-vicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8000
 ```
 
 Your backend will now be available at:
