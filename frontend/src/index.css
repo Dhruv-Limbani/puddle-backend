@@ -1,7 +1,14 @@
+/* ============================
+   GLOBAL RESET + TYPOGRAPHY
+============================ */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
@@ -10,14 +17,52 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--bg-page);
+  color: var(--text-dark);
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
+/* Root wrapper */
 #root {
   min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 100%;
+  display: block;
 }
 
+/* ============================
+   COLOR PALETTE (Puddle Brand)
+============================ */
+:root {
+  --primary-900: #03045E;
+  --primary-800: #023E8A;
+  --primary-700: #0077B6;
+  --primary-600: #0096C7;
+  --primary-500: #00B4D8;
+
+  --accent-300: #48CAE4;
+  --accent-200: #90E0EF;
+  --accent-100: #ADE8F4;
+  --accent-50:  #CAF0F8;
+
+  --text-dark: var(--primary-900);
+  --text-medium: var(--primary-700);
+  --text-light: #ffffff;
+
+  --bg-light: #fdfdff;
+  --bg-page: var(--accent-50);
+}
+
+/* Prevent dark mode Safari autofill / browser overrides */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px var(--accent-50) inset !important;
+  -webkit-text-fill-color: var(--primary-900) !important;
+}

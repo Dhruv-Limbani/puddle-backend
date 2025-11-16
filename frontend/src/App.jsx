@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard'
 import VendorDashboard from './pages/VendorDashboard'
 import BuyerDashboard from './pages/BuyerDashboard'
@@ -45,8 +46,8 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
+          <Route path="/login" element={<Auth />} />
+          <Route path="/signup" element={<Auth />} />
           <Route
             path="/dashboard"
             element={
