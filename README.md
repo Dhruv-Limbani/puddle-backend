@@ -105,7 +105,7 @@ npm install
 ## 🚀 3. Start the development server
 
 ```bash
- npm run dev -- --port 8001
+npm run dev -- --port 8001
 ```
 
 Your frontend should now be running on the port 8001 displayed in the terminal
