@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import VendorProfile from '../components/vendorProfile';
+import Marketplace from '../components/Marketplace';
 import {
   ProfileIcon,
   MarketplaceIcon,
@@ -21,23 +22,21 @@ export default function VendorDashboard() {
   const [isMinimized, setIsMinimized] = useState(false);
 
   useEffect(() => {
-    const path = location.pathname;
-    if (path.includes('marketplace')) setActiveTab('marketplace');
-    else if (path.includes('data-catalog')) setActiveTab('data-catalog');
-    else if (path.includes('agents')) setActiveTab('agents');
-    else setActiveTab('profile');
+    // Remove the path checking since we're handling tabs internally
+    // You can keep this if you want URL persistence, but for now let's simplify
   }, [location]);
 
   const navigationItems = [
-    { id: 'profile', label: 'Profile', icon: ProfileIcon, path: '/vendor-dashboard' },
-    { id: 'marketplace', label: 'Marketplace', icon: MarketplaceIcon, path: '/marketplace' },
-    { id: 'data-catalog', label: 'Data Catalog', icon: DataCatalogIcon, path: '/data-catalog' },
-    { id: 'agents', label: 'AI Agents', icon: AgentIcon, path: '/agents' },
+    { id: 'profile', label: 'Profile', desc:'Manage your vendor presence on Puddle', icon: ProfileIcon },
+    { id: 'marketplace', label: 'Marketplace', desc:'Search Datasets and Vendors', icon: MarketplaceIcon },
+    { id: 'data-catalog', label: 'Data Catalog', desc:'Manage your vendor presence on Puddle', icon: DataCatalogIcon },
+    { id: 'agents', label: 'AI Agents', desc:'Manage your vendor presence on Puddle', icon: AgentIcon },
   ];
 
   const handleNavigation = (item) => {
     setActiveTab(item.id);
-    navigate(item.path);
+    // Don't navigate to a different route, just change the tab state
+    // This keeps everything within the /vendor-dashboard route
   };
 
   const renderContent = () => {
@@ -45,7 +44,7 @@ export default function VendorDashboard() {
       case 'profile':
         return <VendorProfile />;
       case 'marketplace':
-        return <div className="page-placeholder">Marketplace - Coming Soon</div>;
+        return <Marketplace />;
       case 'data-catalog':
         return <div className="page-placeholder">Data Catalog - Coming Soon</div>;
       case 'agents':
@@ -114,7 +113,7 @@ export default function VendorDashboard() {
           <h1>
             {navigationItems.find(item => item.id === activeTab)?.label || 'Vendor Dashboard'}
           </h1>
-          <p>Manage your vendor presence on Puddle</p>
+          <p>{navigationItems.find(item => item.id === activeTab)?.desc || 'Vendor Dashboard'}</p>
         </div>
         
         <div className="main-content">
