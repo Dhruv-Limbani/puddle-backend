@@ -74,7 +74,7 @@ class Vendor(Base):
 
     id = uuid_column(primary_key=True)
     if PG_UUID is not None:
-        user_id = Column(PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
+        user_id = Column(PG_UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
     else:
         user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
     name = Column(String(255), nullable=False)
@@ -108,7 +108,7 @@ class Buyer(Base):
 
     id = uuid_column(primary_key=True)
     if PG_UUID is not None:
-        user_id = Column(PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
+        user_id = Column(PG_UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
     else:
         user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
     name = Column(String(255), nullable=False)
@@ -138,7 +138,7 @@ class AIAgent(Base):
 
     id = uuid_column(primary_key=True)
     if PG_UUID is not None:
-        vendor_id = Column(PG_UUID(as_uuid=True), ForeignKey("vendors.id", ondelete="CASCADE"))
+        vendor_id = Column(PG_UUID(as_uuid=False), ForeignKey("vendors.id", ondelete="CASCADE"))
     else:
         vendor_id = Column(String(36), ForeignKey("vendors.id", ondelete="CASCADE"))
     name = Column(String(255))
@@ -162,7 +162,7 @@ class Dataset(Base):
 
     id = uuid_column(primary_key=True)
     if PG_UUID is not None:
-        vendor_id = Column(PG_UUID(as_uuid=True), ForeignKey("vendors.id", ondelete="CASCADE"), nullable=False)
+        vendor_id = Column(PG_UUID(as_uuid=False), ForeignKey("vendors.id", ondelete="CASCADE"), nullable=False)
     else:
         vendor_id = Column(String(36), ForeignKey("vendors.id", ondelete="CASCADE"), nullable=False)
     title = Column(Text, nullable=False)
@@ -196,7 +196,7 @@ class DatasetColumn(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     if PG_UUID is not None:
-        dataset_id = Column(PG_UUID(as_uuid=True), ForeignKey("datasets.id", ondelete="CASCADE"), nullable=False)
+        dataset_id = Column(PG_UUID(as_uuid=False), ForeignKey("datasets.id", ondelete="CASCADE"), nullable=False)
     else:
         dataset_id = Column(String(36), ForeignKey("datasets.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(255), nullable=False)
@@ -217,9 +217,9 @@ class Chat(Base):
 
     id = uuid_column(primary_key=True)
     if PG_UUID is not None:
-        user_id = Column(PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
-        vendor_id = Column(PG_UUID(as_uuid=True), ForeignKey("vendors.id", ondelete="SET NULL"))
-        agent_id = Column(PG_UUID(as_uuid=True), ForeignKey("ai_agents.id", ondelete="SET NULL"))
+        user_id = Column(PG_UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"))
+        vendor_id = Column(PG_UUID(as_uuid=False), ForeignKey("vendors.id", ondelete="SET NULL"))
+        agent_id = Column(PG_UUID(as_uuid=False), ForeignKey("ai_agents.id", ondelete="SET NULL"))
     else:
         user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"))
         vendor_id = Column(String(36), ForeignKey("vendors.id", ondelete="SET NULL"))

@@ -1,0 +1,470 @@
+/* Styles for the Data Catalog Tab.
+  Shared styles (like .btn, .form-input, .loading-state) 
+  are already in VendorDashboard.css
+*/
+
+:root {
+  /* Define colors for this component, just in case */
+  --red-500: #ef4444;
+  --red-600: #dc2626;
+  --red-100: #fee2e2;
+}
+
+.data-catalog-tab {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 24px;
+}
+
+.catalog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap; /* Allow wrapping on small screens */
+  gap: 16px; /* Add gap for wrapping */
+}
+
+.catalog-header h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--primary-900);
+  margin: 0;
+}
+
+.dataset-table-wrapper {
+  overflow-x: auto;
+}
+
+.dataset-table {
+  width: 100%;
+  min-width: 600px;
+  border-collapse: collapse;
+  background: var(--bg-light);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--accent-100);
+}
+
+.dataset-table th,
+.dataset-table td {
+  padding: 14px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--accent-100);
+  font-size: 14px;
+  vertical-align: middle;
+}
+
+.dataset-table th {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--primary-700);
+  background: var(--accent-50);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dataset-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.dataset-table tbody tr:hover {
+  background: var(--accent-50);
+}
+
+.dataset-title {
+  font-weight: 600;
+  color: var(--primary-800);
+}
+
+.badge-status {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.badge-status-active,
+.badge-visibility-public {
+  background: #ecfccb;
+  color: #3f6212;
+}
+
+.badge-status-draft,
+.badge-visibility-private {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.badge-status-inactive {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--primary-700);
+  transition: all 0.2s ease;
+}
+
+.icon-btn:hover {
+  background: var(--accent-100);
+  color: var(--primary-900);
+}
+
+.icon-btn.delete:hover {
+  background: var(--red-100);
+  color: var(--red-600);
+}
+
+/* Dataset Form */
+.form-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.back-btn {
+  background: var(--accent-100);
+  color: var(--primary-800);
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.back-btn:hover {
+  background: var(--accent-200);
+}
+
+.form-header h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--primary-900);
+  margin: 0;
+}
+
+.columns-section {
+  border-top: 1px solid var(--accent-100);
+  padding-top: 24px;
+}
+
+.columns-section h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary-900);
+  margin: 0 0 20px 0;
+}
+
+.columns-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.column-row {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 2fr 44px; /* Default layout */
+  gap: 16px;
+  align-items: flex-start;
+  background: var(--bg-light);
+  padding: 16px;
+  border-radius: 12px;
+}
+
+/* Responsive layout for column editor */
+@media (max-width: 900px) {
+  .column-row {
+    /* Stack Name/Type and Description/Button */
+    grid-template-columns: 1fr 1fr; /* Two columns */
+  }
+  .column-row .form-group:nth-child(3) { /* Description */
+    grid-column: 1 / -1; /* Full width */
+  }
+  .column-row .remove-column-btn {
+    grid-column: 2 / 3; /* Align with second column */
+    grid-row: 1 / 2; /* Put in first row */
+    margin-top: 26px; /* FIX: Align with input */
+    justify-self: end; /* Push to the right */
+  }
+}
+
+@media (max-width: 600px) {
+  .column-row {
+    grid-template-columns: 1fr; /* Single column */
+  }
+  .column-row .remove-column-btn {
+    grid-column: 1 / -1; /* Full width */
+    grid-row: auto; /* Auto-place at the end */
+    margin-top: 0;
+    height: 40px;
+    width: 100%;
+  }
+}
+
+.column-row .form-group {
+  margin-bottom: 0;
+}
+
+/*
+  REMOVED: This rule was not specific enough.
+.column-row .form-input {
+  background: var(--bg-light);
+  padding-left: 14px;
+}
+*/
+
+.column-row .form-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary-700);
+}
+
+.remove-column-btn {
+  background: var(--red-100);
+  color: var(--red-600);
+  border: none;
+  border-radius: 10px;
+  width: 44px;
+  height: 44px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  /* FIX #4: Align with input field, accounting for label height (approx 26px) */
+  margin-top: 26px; 
+}
+
+.remove-column-btn:hover {
+  background: var(--red-500);
+  color: white;
+}
+
+.add-column-btn {
+  margin-top: 16px;
+  justify-content: flex-start; /* Aligns text to the left */
+  width: -moz-fit-content;
+  width: fit-content; /* Only as wide as content */
+}
+
+/* Tag Input */
+.tag-input-container {
+  background: var(--accent-50);
+  border: 1.6px solid var(--accent-100);
+  border-radius: 10px;
+  
+  /* This padding is fine */
+  padding: 8px 12px 8px 48px; 
+  
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.tag-input-container:focus-within {
+  background: var(--bg-light);
+  border-color: var(--primary-600);
+  box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.2);
+}
+
+.tag-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--primary-700);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tag-item button {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 2px;
+  opacity: 0.7;
+}
+
+.tag-item button:hover {
+  opacity: 1;
+}
+
+.tag-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: none;
+  
+  /* MODIFIED: Add 4px vertical padding to match the tags */
+  padding: 4px 4px; 
+  
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-900);
+  min-width: 120px;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(3, 4, 94, 0.3);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; z-index: 2000;
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal-content {
+  background: var(--bg-light);
+  border-radius: 20px;
+  padding: 32px;
+  max-width: 480px; width: 90%;
+  box-shadow: 0 20px 60px rgba(3, 4, 94, 0.3);
+  border: 1px solid var(--accent-100);
+  animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal-header {
+  margin-bottom: 24px;
+  text-align: center;
+}
+.modal-header h3 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--primary-900);
+  margin: 0 0 8px 0;
+}
+.modal-header p {
+  font-size: 16px;
+  color: var(--primary-700);
+  margin: 0;
+  line-height: 1.5;
+}
+.modal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 24px;
+}
+.modal-actions .btn {
+  padding: 14px 24px;
+  font-size: 15px;
+}
+
+/* Success Toast */
+.success-toast {
+  position: fixed; top: 20px; right: 20px;
+  background: var(--primary-800);
+  color: white;
+  padding: 14px 20px;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(3, 4, 94, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 2001;
+  animation: slideInRight 0.3s ease, fadeOut 0.3s ease 2.7s;
+}
+@keyframes slideInRight { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+.success-toast-icon {
+  width: 22px; height: 22px;
+  background: var(--accent-200);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-900);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.success-toast-message {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Form inputs for DataCatalog specifically */
+/* This ensures the padding-left is correct */
+.data-catalog-form .form-input {
+  padding-left: 48px;
+  height: 50px;
+}
+.data-catalog-form .form-input::placeholder {
+  color: var(--primary-600);
+  opacity: 0.7;
+  font-weight: 400;
+}
+.data-catalog-form textarea.form-input {
+  padding-left: 48px;
+}
+/* REMOVED: This rule was not specific enough.
+.column-row .form-input {
+  padding-left: 14px;
+} 
+*/
+
+
+/* --- FIXES START HERE --- */
+
+/* FIX 2: Style <select> dropdowns to match site theme
+  - Removes default browser arrow
+  - Adds a custom SVG arrow in the site's brand color
+*/
+.data-catalog-form select.form-input {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  /* Custom arrow SVG, color-matched to var(--primary-700) (#0077B6) */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%230077B6'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd' /%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 1.25em;
+  padding-right: 48px; /* Make space for the new arrow */
+}
+
+/* FIX 2 & 3: Use a more specific selector for column row inputs
+  - Fixes padding: Resets padding-left to 14px (default) to remove icon space.
+  - Fixes contrast: Sets background to white to contrast with the blue row.
+*/
+.data-catalog-form .column-row .form-input {
+  padding-left: 14px !important; 
+}
+
+/* FIX 2: Fix select padding in column rows (no icon) */
+.data-catalog-form .column-row select.form-input {
+  padding-right: 32px; /* Keep the dropdown arrow padding */
+  background-position: right 10px center;
+  
+  /* ADD THIS LINE: Force the height to match other 44px inputs */
+  height: 50px;
+}
+
+
+/* --- FIXES END HERE --- */

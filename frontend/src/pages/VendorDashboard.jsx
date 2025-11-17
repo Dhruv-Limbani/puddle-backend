@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import VendorProfile from '../components/vendorProfile';
+import VendorProfile from '../components/VendorProfile';
 import Marketplace from '../components/Marketplace';
+import DataCatalogTab from '../components/DataCatalog'; // <-- IMPORT THE NEW COMPONENT
 import {
   ProfileIcon,
   MarketplaceIcon,
@@ -11,8 +12,9 @@ import {
   PuddleLogoIcon,
   LogoutIcon,
   SidebarToggleIcon
-} from '../components/icons';
+} from '../components/icons'; // Make sure Icons.jsx is updated
 import './VendorDashboard.css';
+import '../components/DataCatalog.css'; // <-- IMPORT THE NEW CSS
 
 export default function VendorDashboard() {
   const { user, logout } = useAuth();
@@ -22,21 +24,26 @@ export default function VendorDashboard() {
   const [isMinimized, setIsMinimized] = useState(false);
 
   useEffect(() => {
-    // Remove the path checking since we're handling tabs internally
-    // You can keep this if you want URL persistence, but for now let's simplify
+    // This logic is fine, it will set the tab based on the URL
+    const path = location.pathname;
+    if (path.includes('marketplace')) setActiveTab('marketplace');
+    else if (path.includes('data-catalog')) setActiveTab('data-catalog');
+    else if (path.includes('agents')) setActiveTab('agents');
+    else setActiveTab('profile');
   }, [location]);
 
   const navigationItems = [
     { id: 'profile', label: 'Profile', desc:'Manage your vendor presence on Puddle', icon: ProfileIcon },
     { id: 'marketplace', label: 'Marketplace', desc:'Search Datasets and Vendors', icon: MarketplaceIcon },
-    { id: 'data-catalog', label: 'Data Catalog', desc:'Manage your vendor presence on Puddle', icon: DataCatalogIcon },
-    { id: 'agents', label: 'AI Agents', desc:'Manage your vendor presence on Puddle', icon: AgentIcon },
+    { id: 'data-catalog', label: 'Data Catalog', desc:'Manage your datasets and columns', icon: DataCatalogIcon }, // <-- UPDATED DESCRIPTION
+    { id: 'agents', label: 'AI Agents', desc:'Configure your AI agents', icon: AgentIcon },
   ];
 
+  // This function can be simplified if you don't use routing for tabs
   const handleNavigation = (item) => {
     setActiveTab(item.id);
-    // Don't navigate to a different route, just change the tab state
-    // This keeps everything within the /vendor-dashboard route
+    // You can choose to navigate or not.
+    // navigate(item.path); // Uncomment if you want URL-based navigation
   };
 
   const renderContent = () => {
@@ -46,7 +53,7 @@ export default function VendorDashboard() {
       case 'marketplace':
         return <Marketplace />;
       case 'data-catalog':
-        return <div className="page-placeholder">Data Catalog - Coming Soon</div>;
+        return <DataCatalogTab />; // <-- USE THE NEW COMPONENT
       case 'agents':
         return <div className="page-placeholder">AI Agents - Coming Soon</div>;
       default:
@@ -113,7 +120,7 @@ export default function VendorDashboard() {
           <h1>
             {navigationItems.find(item => item.id === activeTab)?.label || 'Vendor Dashboard'}
           </h1>
-          <p>{navigationItems.find(item => item.id === activeTab)?.desc || 'Vendor Dashboard'}</p>
+          <p>{navigationItems.find(item => item.id === activeTab)?.desc || 'Manage your Puddle account'}</p>
         </div>
         
         <div className="main-content">
