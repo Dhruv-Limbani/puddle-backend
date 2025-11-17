@@ -26,7 +26,6 @@ import {
 
 /**
  * Reusable Modal Component
- * (Styled to match your screenshot)
  */
 function Modal({ title, children, confirmText, cancelText, onConfirm, onCancel, confirmVariant = 'primary', isSaving = false }) {
   return (
@@ -72,8 +71,8 @@ function SuccessToast({ message }) {
   );
 }
 
-// Reusable Tag Input for Topics
-function TagInput({ tags, setTags }) {
+// Reusable Tag Input
+function TagInput({ tags, setTags, placeholder }) {
   const [inputValue, setInputValue] = useState('');
 
   const handleKeyDown = (e) => {
@@ -105,8 +104,116 @@ function TagInput({ tags, setTags }) {
         value={inputValue}
         onChange={(e) => setInputValue(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Add topics (press Enter)"
+        placeholder={placeholder || "Add topics (press Enter)"}
       />
+    </div>
+  );
+}
+
+// --- NEW: Smart Input for Temporal Coverage ---
+function TemporalCoverageInput({ value, onChange }) {
+  // value is an object like { start_date, end_date, frequency } or null
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [frequency, setFrequency] = useState('');
+
+  useEffect(() => {
+    setStartDate(value?.start_date || '');
+    setEndDate(value?.end_date || '');
+    setFrequency(value?.frequency || '');
+  }, [value]);
+
+  const handleChange = (field, fieldValue) => {
+    const newState = {
+      start_date: field === 'start_date' ? fieldValue : startDate,
+      end_date: field === 'end_date' ? fieldValue : endDate,
+      frequency: field === 'frequency' ? fieldValue : frequency,
+    };
+
+    // Update internal state
+    if (field === 'start_date') setStartDate(fieldValue);
+    if (field === 'end_date') setEndDate(fieldValue);
+    if (field === 'frequency') setFrequency(fieldValue);
+
+    // Notify parent
+    onChange(newState);
+  };
+
+  return (
+    // This grid provides the grouped input layout
+    <div className="form-grid" style={{ gap: '16px', padding: '16px', background: 'var(--accent-50)', borderRadius: '10px' }}>
+      <div className="form-group">
+        <label className="form-label" style={{fontSize: '12px'}}>Start Date</label>
+        <input
+          type="date"
+          className="form-input"
+          value={startDate}
+          onChange={e => handleChange('start_date', e.target.value)}
+          style={{ paddingLeft: '14px', height: '44px' }} // Override icon padding
+        />
+      </div>
+      <div className="form-group">
+        <label className="form-label" style={{fontSize: '12px'}}>End Date</label>
+        <input
+          type="date"
+          className="form-input"
+          value={endDate}
+          onChange={e => handleChange('end_date', e.target.value)}
+          style={{ paddingLeft: '14px', height: '44px' }} // Override icon padding
+        />
+      </div>
+      <div className="form-group">
+        <label className="form-label" style={{fontSize: '12px'}}>Frequency</label>
+        <input
+          type="text"
+          className="form-input"
+          value={frequency}
+          onChange={e => handleChange('frequency', e.target.value)}
+          placeholder="e.g., Daily, Monthly"
+          style={{ paddingLeft: '14px', height: '44px' }} // Override icon padding
+        />
+      </div>
+    </div>
+  );
+}
+
+// --- NEW: Smart Input for Geographic Coverage ---
+function GeographicCoverageInput({ value, onChange }) {
+  // value is an object like { regions: [], countries: [] } or null
+  const regions = value?.regions || [];
+  const countries = value?.countries || [];
+
+  const handleRegionsChange = (newRegions) => {
+    onChange({ regions: newRegions, countries: countries });
+  };
+
+  const handleCountriesChange = (newCountries) => {
+    onChange({ regions: regions, countries: newCountries });
+  };
+
+  return (
+    // This container groups the two tag inputs
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px', background: 'var(--accent-50)', borderRadius: '10px' }}>
+      <div className="form-group">
+        <label className="form-label" style={{fontSize: '12px'}}>Regions</label>
+        <div className="input-wrapper">
+          <TagInput
+            tags={regions}
+            setTags={handleRegionsChange}
+            placeholder="Add regions (e.g., North America)"
+          />
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="form-label" style={{fontSize: '12px'}}>Countries</label>
+        <div className="input-wrapper">
+          <TagInput
+            tags={countries}
+            setTags={handleCountriesChange}
+            placeholder="Add countries (e.g., US, CA)"
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -116,7 +223,6 @@ function TagInput({ tags, setTags }) {
 
 /**
  * 1. DatasetList (Main View)
- * Shows a table of datasets with actions
  */
 function DatasetList({ vendorId, onEdit, onCreate, onRefresh }) {
   const { token } = useAuth();
@@ -134,7 +240,6 @@ function DatasetList({ vendorId, onEdit, onCreate, onRefresh }) {
     setLoading(true);
     setError('');
     try {
-      // Assuming vendorId is now implicitly handled by the token on the backend
       const data = await dataCatalogService.listDatasets(token);
       setDatasets(data);
     } catch (err) {
@@ -254,16 +359,20 @@ function DatasetList({ vendorId, onEdit, onCreate, onRefresh }) {
 
 /**
  * 2. DatasetForm (Create/Edit View)
- * A full form for dataset and its columns
  */
+// --- MODIFIED: State now holds objects, not strings ---
 const EMPTY_DATASET_FORM = {
   title: '', description: '', status: 'draft', visibility: 'private',
   domain: '', dataset_type: '', granularity: '', pricing_model: '',
   license: '', topics: [],
+  entities: [],
+  temporal_coverage: null, // <-- CHANGED
+  geographic_coverage: null, // <-- CHANGED
 };
 const EMPTY_COLUMN = { id: `temp_${Date.now()}`, name: '', data_type: 'string', description: '' };
 
-function DatasetForm({ datasetId, onBack, onSaveSuccess }) {
+// --- Accept 'vendorId' in props ---
+function DatasetForm({ vendorId, datasetId, onBack, onSaveSuccess }) {
   const { token } = useAuth();
   const [formData, setFormData] = useState(EMPTY_DATASET_FORM);
   const [columns, setColumns] = useState([]);
@@ -304,6 +413,10 @@ function DatasetForm({ datasetId, onBack, onSaveSuccess }) {
         pricing_model: data.pricing_model || '',
         license: data.license || '',
         topics: Array.isArray(data.topics) ? data.topics : [],
+        entities: Array.isArray(data.entities) ? data.entities : [],
+        // --- MODIFIED: Load objects directly, or null ---
+        temporal_coverage: data.temporal_coverage || null,
+        geographic_coverage: data.geographic_coverage || null,
       });
       setColumns(columns || []);
     } catch (err) {
@@ -314,6 +427,7 @@ function DatasetForm({ datasetId, onBack, onSaveSuccess }) {
   };
 
   const handleInputChange = (e) => {
+    // This now works for both standard inputs and our custom components
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
@@ -346,14 +460,29 @@ function DatasetForm({ datasetId, onBack, onSaveSuccess }) {
     setSaving(true);
     setError('');
     
+    // --- MODIFIED: No JSON parsing needed! ---
+    // The state (formData) already holds the correct objects.
+
     // Clean columns: remove temp IDs
     const cleanColumns = columns.map(col => {
       const { id, ...rest } = col;
-      // Send real ID if it's not a temp one
       return col.id.toString().startsWith('temp_') ? rest : col;
     });
 
-    const payload = { ...formData, columns: cleanColumns };
+    const payload = { 
+      ...formData, // This includes our objects for temporal/geographic coverage
+      columns: cleanColumns,
+    };
+    
+    // --- Add vendor_id to payload ONLY on create ---
+    if (!datasetId) { // This is a CREATE operation
+      if (!vendorId) {
+        setError("Vendor ID is missing. Cannot create dataset.");
+        setSaving(false);
+        return; // Stop execution
+      }
+      payload.vendor_id = vendorId;
+    }
     
     try {
       if (datasetId) {
@@ -410,6 +539,7 @@ function DatasetForm({ datasetId, onBack, onSaveSuccess }) {
         <div className="form-section">
           <h3>Dataset Details</h3>
           <div className="form-grid">
+            {/* --- All the existing fields --- */}
             <div className="form-group full">
               <label htmlFor="title" className="form-label">Title <span className="required">*</span></label>
               <div className="input-wrapper">
@@ -485,9 +615,50 @@ function DatasetForm({ datasetId, onBack, onSaveSuccess }) {
               <label htmlFor="topics" className="form-label">Topics</label>
               <div className="input-wrapper">
                 <span className="input-icon textarea-icon" style={{ left: '16px' }}><TagIcon /></span>
-                <TagInput tags={formData.topics} setTags={(newTags) => setFormData(p => ({...p, topics: newTags}))} />
+                <TagInput 
+                  tags={formData.topics} 
+                  setTags={(newTags) => setFormData(p => ({...p, topics: newTags}))}
+                  placeholder="Add topics (press Enter)"
+                />
               </div>
             </div>
+
+            <div className="form-group full">
+              <label htmlFor="entities" className="form-label">Entities</label>
+              <div className="input-wrapper">
+                <span className="input-icon textarea-icon" style={{ left: '16px' }}><UsersIcon /></span>
+                <TagInput 
+                  tags={formData.entities} 
+                  setTags={(newTags) => setFormData(p => ({...p, entities: newTags}))} 
+                  placeholder="Add entities (e.g., patients, stocks)"
+                />
+              </div>
+            </div>
+
+            {/* --- MODIFIED: Replaced Textareas with Smart Inputs --- */}
+
+            <div className="form-group">
+              <label htmlFor="temporal_coverage" className="form-label">Temporal Coverage</label>
+              <div className="input-wrapper">
+                {/* We pass a 'fake' event object to handleInputChange */}
+                <TemporalCoverageInput 
+                  value={formData.temporal_coverage}
+                  onChange={(newValue) => handleInputChange({ target: { name: 'temporal_coverage', value: newValue } })}
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="geographic_coverage" className="form-label">Geographic Coverage</label>
+              <div className="input-wrapper">
+                <GeographicCoverageInput
+                  value={formData.geographic_coverage}
+                  onChange={(newValue) => handleInputChange({ target: { name: 'geographic_coverage', value: newValue } })}
+                />
+              </div>
+            </div>
+            {/* --- END OF MODIFIED FIELDS --- */}
+
           </div>
         </div>
 
@@ -496,14 +667,12 @@ function DatasetForm({ datasetId, onBack, onSaveSuccess }) {
           <div className="columns-list">
             {columns.map((col, index) => (
               <div className="column-row" key={col.id}>
-                {/* FIX 1: Add input-wrapper for correct label order */}
                 <div className="form-group">
                   <label htmlFor={`col_name_${index}`} className="form-label">Column Name <span className="required">*</span></label>
                   <div className="input-wrapper">
                     <input id={`col_name_${index}`} type="text" value={col.name} onChange={(e) => handleColumnChange(index, 'name', e.target.value)} className="form-input" placeholder="e.g., user_id" required disabled={saving} />
                   </div>
                 </div>
-                {/* FIX 1: Add input-wrapper for correct label order */}
                 <div className="form-group">
                   <label htmlFor={`col_type_${index}`} className="form-label">Data Type</label>
                   <div className="input-wrapper">
@@ -517,7 +686,6 @@ function DatasetForm({ datasetId, onBack, onSaveSuccess }) {
                     </select>
                   </div>
                 </div>
-                {/* FIX 1: Add input-wrapper for correct label order */}
                 <div className="form-group">
                   <label htmlFor={`col_desc_${index}`} className="form-label">Description</label>
                   <div className="input-wrapper">
@@ -530,10 +698,6 @@ function DatasetForm({ datasetId, onBack, onSaveSuccess }) {
               </div>
             ))}
           </div>
-          {/* FIX 3: Changed button style to 'btn-secondary' 
-            (or any other style) for better contrast.
-            'btn-secondary' is light blue, let's use that.
-          */}
           <button type="button" className="btn btn-secondary add-column-btn" onClick={addColumn} disabled={saving}>
             <PlusIcon />
             Add Column
@@ -556,17 +720,16 @@ function DatasetForm({ datasetId, onBack, onSaveSuccess }) {
 
 /**
  * 3. DataCatalogTab (Main Controller)
- * Manages the view state between List and Form
  */
 export default function DataCatalogTab() {
-  const { vendorId } = useAuth(); // You need to make sure your AuthContext provides this!
+  const { vendorId } = useAuth(); 
   const [view, setView] = useState('list'); // 'list' or 'form'
   const [selectedDatasetId, setSelectedDatasetId] = useState(null);
-  const [refreshKey, setRefreshKey] = useState(0); // Used to trigger list refresh
+  const [refreshKey, setRefreshKey] = useState(0); 
 
-  // Mock vendorId if not provided by AuthContext, for dev purposes
-  // In production, your AuthContext should find the vendorId from the user
-  const effectiveVendorId = vendorId || 'vendor_abc_123'; // REMOVE THIS FALLBACK IN PROD
+  // --- THIS IS THE FIX ---
+  // Remove the mock fallback and use the real vendorId from useAuth()
+  const effectiveVendorId = vendorId;
 
   const handleCreate = () => {
     setSelectedDatasetId(null);
@@ -589,6 +752,7 @@ export default function DataCatalogTab() {
     setRefreshKey(key => key + 1); // Increment key to force DatasetList refresh
   };
 
+  // This check now correctly waits for AuthContext to load the vendorId
   if (!effectiveVendorId) {
     return (
       <div className="loading-state">

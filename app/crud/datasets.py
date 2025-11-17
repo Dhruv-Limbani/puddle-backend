@@ -76,10 +76,12 @@ async def create_dataset_with_columns(db: AsyncSession, data: Dict[str, Any]) ->
 
     dataset = Dataset(**data)
     db.add(dataset)
-    await db.flush()
+    await db.flush() # dataset.id is now available
 
     if columns_data:
-        new_columns_list = []
+        # --- START FIX ---
+        # Don't assign to dataset.columns
+        # Instead, create columns with the new dataset_id and add to session
         for col in columns_data:
             # accept dicts or pydantic models
             if hasattr(col, "model_dump"):
@@ -94,12 +96,20 @@ async def create_dataset_with_columns(db: AsyncSession, data: Dict[str, Any]) ->
             if 'id' in col_payload and str(col_payload['id']).startswith('temp_'):
                 del col_payload['id']
             
-            # Let the relationship handle adding
-            new_columns_list.append(DatasetColumn(**col_payload))
+            # Manually set the foreign key
+            col_payload['dataset_id'] = dataset.id
+            
+            # Create the object and add it to the session
+            new_col_obj = DatasetColumn(**col_payload)
+            db.add(new_col_obj)
+        # --- END FIX ---
         
-        dataset.columns = new_columns_list
+        # REMOVED THIS LINE:
+        # dataset.columns = new_columns_list
 
     await db.commit()
+    
+    # Reload with columns to ensure relationship is populated for the serializer
     result = await db.execute(
         select(Dataset)
         .options(selectinload(Dataset.columns))

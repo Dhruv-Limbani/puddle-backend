@@ -28,6 +28,17 @@ class DatasetColumnRead(DatasetColumnBase):
 
 # --- DATASET SCHEMAS ---
 
+# --- NEW: Define specific schemas for JSON fields ---
+class TemporalCoverage(BaseModel):
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    frequency: Optional[str] = None
+
+class GeographicCoverage(BaseModel):
+    regions: Optional[List[str]] = []
+    countries: Optional[List[str]] = []
+
+
 # ** BUG FIX: Create a Base schema for common fields **
 class DatasetBase(BaseModel):
     title: str
@@ -37,10 +48,10 @@ class DatasetBase(BaseModel):
     granularity: Optional[str] = None
     pricing_model: Optional[str] = None
     license: Optional[str] = None
-    topics: Optional[Any] = None
-    entities: Optional[Any] = None
-    temporal_coverage: Optional[Any] = None
-    geographic_coverage: Optional[Any] = None
+    topics: Optional[List[str]] = None
+    entities: Optional[List[str]] = None
+    temporal_coverage: Optional[TemporalCoverage] = None
+    geographic_coverage: Optional[GeographicCoverage] = None
     visibility: Optional[str] = "public"
     status: Optional[str] = "active"
     embedding_input: Optional[str] = None
