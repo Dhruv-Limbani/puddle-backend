@@ -558,7 +558,7 @@ textarea.form-input {
 .modal-actions {
   display: flex;
   gap: 10px;
-  justify-content: flex-end;
+  justify-content: center;
   margin-top: 24px;
 }
 
@@ -570,6 +570,22 @@ textarea.form-input {
 .btn-secondary:hover {
   background: var(--accent-200);
   transform: translateY(-2px);
+}
+
+.btn-danger {
+  background: #6b7280;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #4b5563;
+  transform: translateY(-2px);
+}
+
+.btn-danger:disabled {
+  background: #9ca3af;
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 /* Success Message Toast */

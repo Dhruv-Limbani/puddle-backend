@@ -29,8 +29,12 @@ export const datasetService = {
     return await response.json()
   },
 
-  async get(token, datasetId) {
-    const response = await fetch(`${API_BASE_URL}/datasets/${datasetId}`, {
+  async get(token, datasetId, opts = {}) {
+    // opts: { public: true } to use the public endpoint
+    const url = opts.public
+      ? `${API_BASE_URL}/datasets/public/${datasetId}`
+      : `${API_BASE_URL}/datasets/${datasetId}`;
+    const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
       },

@@ -20,11 +20,11 @@ export function AuthProvider({ children }) {
     // Only fetch if the user is a vendor
     if (userData && userData.role === 'vendor') {
       try {
-        // We assume vendorService.list() returns [myProfile] for a vendor
-        const vendorProfiles = await vendorService.list(authToken)
+        // Use the /me endpoint to get the current user's vendor profile
+        const vendorProfile = await vendorService.getMe(authToken)
         
-        if (vendorProfiles && vendorProfiles.length > 0) {
-          setVendorId(vendorProfiles[0].id) // Set the vendorId from the profile
+        if (vendorProfile) {
+          setVendorId(vendorProfile.id) // Set the vendorId from the profile
         } else {
           console.warn('Vendor user has no vendor profile.')
           setVendorId(null) // Ensure it's null if no profile is found
@@ -89,7 +89,9 @@ export function AuthProvider({ children }) {
     user,
     token,
     // --- FIX 6: Add vendorId to the context value ---
-    vendorId, 
+    vendorId,
+    // --- FIX 7: Expose refreshVendorId so components can update it ---
+    refreshVendorId: () => loadVendorData(token, user),
     isAuthenticated: !!token,
     loading,
     login,

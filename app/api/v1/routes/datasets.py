@@ -136,6 +136,20 @@ async def get_dataset(
 
     return dataset
 
+# PUBLIC DATASET PROFILE ENDPOINT (for Marketplace)
+@router.get("/public/{dataset_id}", response_model=DatasetRead)
+async def get_public_dataset(
+    dataset_id: str,
+    current_user: UserRead = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    dataset = await crud_datasets.get_dataset_with_columns(db, dataset_id)
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    if dataset.visibility != "public":
+        raise HTTPException(status_code=403, detail="Dataset is not public")
+    return dataset
+
 
 # UPDATE DATASET (all-or-nothing; columns replace if provided)
 @router.put("/{dataset_id}", response_model=DatasetRead)

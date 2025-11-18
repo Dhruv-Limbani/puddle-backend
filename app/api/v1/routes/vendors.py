@@ -73,6 +73,35 @@ async def create_vendor(
 
 
 # =========================================================
+# GET CURRENT USER'S VENDOR PROFILE
+# =========================================================
+@router.get(
+    "/me/",
+    response_model=VendorRead,
+    summary="Get my vendor profile",
+    description="Retrieve the vendor profile associated with the current logged-in user. Only accessible by vendors.",
+    response_description="Current user's vendor profile",
+)
+async def get_my_vendor_profile(
+    db: AsyncSession = Depends(get_session),
+    current_user: UserRead = Depends(get_current_user),
+):
+    if current_user.role != "vendor":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only vendors can access this endpoint"
+        )
+    
+    vendor = await crud_vendors.get_vendor_by_user_id(db, current_user.id)
+    if not vendor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vendor profile not found for this user"
+        )
+    return vendor
+
+
+# =========================================================
 # LIST VENDORS
 # =========================================================
 @router.get(

@@ -40,7 +40,7 @@ function Modal({ title, children, confirmText, cancelText, onConfirm, onCancel, 
             {cancelText || 'Cancel'}
           </button>
           <button
-            className={`btn ${confirmVariant === 'danger' ? 'btn-danger' : 'btn-primary'}`}
+            className="btn btn-primary"
             onClick={onConfirm}
             disabled={isSaving}
           >
@@ -78,7 +78,7 @@ function TagInput({ tags, setTags, placeholder }) {
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
-      const newTag = inputValue.trim().toLowerCase();
+      const newTag = inputValue.trim();
       if (newTag && !tags.includes(newTag)) {
         setTags([...tags, newTag]);
       }
@@ -140,38 +140,83 @@ function TemporalCoverageInput({ value, onChange }) {
   };
 
   return (
-    // This grid provides the grouped input layout
-    <div className="form-grid" style={{ gap: '16px', padding: '16px', background: 'var(--accent-50)', borderRadius: '10px' }}>
-      <div className="form-group">
-        <label className="form-label" style={{fontSize: '12px'}}>Start Date</label>
+    <div style={{ 
+      padding: '20px', 
+      background: 'var(--bg-light)', 
+      borderRadius: '12px', 
+      border: '1px solid var(--accent-100)',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '16px'
+    }}>
+      <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: 700, color: 'var(--primary-900)' }}>Temporal Coverage</h4>
+      
+      <div style={{ marginBottom: 0 }}>
+        <label style={{ 
+          display: 'block',
+          fontSize: '12px', 
+          fontWeight: 600,
+          color: 'var(--primary-700)',
+          marginBottom: '6px'
+        }}>
+          Start Date
+        </label>
         <input
           type="date"
           className="form-input"
           value={startDate}
           onChange={e => handleChange('start_date', e.target.value)}
-          style={{ paddingLeft: '14px', height: '44px' }} // Override icon padding
+          style={{ paddingLeft: '14px', height: '44px' }}
         />
       </div>
-      <div className="form-group">
-        <label className="form-label" style={{fontSize: '12px'}}>End Date</label>
+      <div style={{ marginBottom: 0 }}>
+        <label style={{ 
+          display: 'block',
+          fontSize: '12px', 
+          fontWeight: 600,
+          color: 'var(--primary-700)',
+          marginBottom: '6px'
+        }}>
+          End Date
+        </label>
         <input
           type="date"
           className="form-input"
           value={endDate}
           onChange={e => handleChange('end_date', e.target.value)}
-          style={{ paddingLeft: '14px', height: '44px' }} // Override icon padding
+          style={{ paddingLeft: '14px', height: '44px' }}
         />
       </div>
-      <div className="form-group">
-        <label className="form-label" style={{fontSize: '12px'}}>Frequency</label>
-        <input
-          type="text"
+      <div style={{ marginBottom: 0 }}>
+        <label style={{ 
+          display: 'block',
+          fontSize: '12px', 
+          fontWeight: 600,
+          color: 'var(--primary-700)',
+          marginBottom: '6px'
+        }}>
+          Frequency
+        </label>
+        <select
           className="form-input"
           value={frequency}
           onChange={e => handleChange('frequency', e.target.value)}
-          placeholder="e.g., Daily, Monthly"
-          style={{ paddingLeft: '14px', height: '44px' }} // Override icon padding
-        />
+          style={{ paddingLeft: '14px', height: '44px' }}
+        >
+          <option value="">Select frequency...</option>
+          <option value="Real-time">Real-time</option>
+          <option value="Hourly">Hourly</option>
+          <option value="Daily">Daily</option>
+          <option value="Bi-weekly">Bi-weekly</option>
+          <option value="Weekly">Weekly</option>
+          <option value="Bi-monthly">Bi-monthly</option>
+          <option value="Monthly">Monthly</option>
+          <option value="Quarterly">Quarterly</option>
+          <option value="Semi-annually">Semi-annually</option>
+          <option value="Annually">Annually</option>
+          <option value="Ad-hoc">Ad-hoc</option>
+          <option value="One-time">One-time</option>
+        </select>
       </div>
     </div>
   );
@@ -192,27 +237,48 @@ function GeographicCoverageInput({ value, onChange }) {
   };
 
   return (
-    // This container groups the two tag inputs
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px', background: 'var(--accent-50)', borderRadius: '10px' }}>
-      <div className="form-group">
-        <label className="form-label" style={{fontSize: '12px'}}>Regions</label>
-        <div className="input-wrapper">
-          <TagInput
-            tags={regions}
-            setTags={handleRegionsChange}
-            placeholder="Add regions (e.g., North America)"
-          />
-        </div>
+    <div style={{ 
+      padding: '20px', 
+      background: 'var(--bg-light)', 
+      borderRadius: '12px', 
+      border: '1px solid var(--accent-100)',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '16px'
+    }}>
+      <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: 700, color: 'var(--primary-900)' }}>Geographic Coverage</h4>
+      
+      <div style={{ marginBottom: 0 }}>
+        <label style={{ 
+          display: 'block',
+          fontSize: '12px', 
+          fontWeight: 600,
+          color: 'var(--primary-700)',
+          marginBottom: '6px'
+        }}>
+          Regions
+        </label>
+        <TagInput
+          tags={regions}
+          setTags={handleRegionsChange}
+          placeholder="Add regions (e.g., North America)"
+        />
       </div>
-      <div className="form-group">
-        <label className="form-label" style={{fontSize: '12px'}}>Countries</label>
-        <div className="input-wrapper">
-          <TagInput
-            tags={countries}
-            setTags={handleCountriesChange}
-            placeholder="Add countries (e.g., US, CA)"
-          />
-        </div>
+      <div style={{ marginBottom: 0 }}>
+        <label style={{ 
+          display: 'block',
+          fontSize: '12px', 
+          fontWeight: 600,
+          color: 'var(--primary-700)',
+          marginBottom: '6px'
+        }}>
+          Countries
+        </label>
+        <TagInput
+          tags={countries}
+          setTags={handleCountriesChange}
+          placeholder="Add countries (e.g., US, CA)"
+        />
       </div>
     </div>
   );
@@ -290,7 +356,7 @@ function DatasetList({ vendorId, onEdit, onCreate, onRefresh }) {
       {showDeleteModal && (
         <Modal
           title="Delete Dataset"
-          confirmText={deleting ? 'Deleting...' : 'Delete'}
+          confirmText="Delete"
           confirmVariant="danger"
           onConfirm={confirmDelete}
           onCancel={() => setShowDeleteModal(null)}
@@ -517,7 +583,7 @@ function DatasetForm({ vendorId, datasetId, onBack, onSaveSuccess }) {
       {showConfirmModal && (
         <Modal
           title="Confirm Update"
-          confirmText="Confirm Update"
+          confirmText="Update"
           onConfirm={saveDataset}
           onCancel={() => setShowConfirmModal(false)}
           isSaving={saving}
@@ -610,11 +676,24 @@ function DatasetForm({ vendorId, datasetId, onBack, onSaveSuccess }) {
                 <input id="license" name="license" type="text" value={formData.license} onChange={handleInputChange} className="form-input" placeholder="e.g., Commercial Use" disabled={saving} style={{ paddingLeft: '48px' }} />
               </div>
             </div>
+          </div>
+        </div>
 
-            <div className="form-group full">
-              <label htmlFor="topics" className="form-label">Topics</label>
-              <div className="input-wrapper">
-                <span className="input-icon textarea-icon" style={{ left: '16px' }}><TagIcon /></span>
+        {/* Topics and Entities Section */}
+        <div className="form-section">
+          <h3>Topics and Entities</h3>
+          <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+            <div style={{ marginBottom: 0 }}>
+              <div style={{ 
+                padding: '20px', 
+                background: 'var(--bg-light)', 
+                borderRadius: '12px', 
+                border: '1px solid var(--accent-100)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px'
+              }}>
+                <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: 700, color: 'var(--primary-900)' }}>Topics</h4>
                 <TagInput 
                   tags={formData.topics} 
                   setTags={(newTags) => setFormData(p => ({...p, topics: newTags}))}
@@ -623,10 +702,17 @@ function DatasetForm({ vendorId, datasetId, onBack, onSaveSuccess }) {
               </div>
             </div>
 
-            <div className="form-group full">
-              <label htmlFor="entities" className="form-label">Entities</label>
-              <div className="input-wrapper">
-                <span className="input-icon textarea-icon" style={{ left: '16px' }}><UsersIcon /></span>
+            <div style={{ marginBottom: 0 }}>
+              <div style={{ 
+                padding: '20px', 
+                background: 'var(--bg-light)', 
+                borderRadius: '12px', 
+                border: '1px solid var(--accent-100)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px'
+              }}>
+                <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: 700, color: 'var(--primary-900)' }}>Entities</h4>
                 <TagInput 
                   tags={formData.entities} 
                   setTags={(newTags) => setFormData(p => ({...p, entities: newTags}))} 
@@ -634,34 +720,30 @@ function DatasetForm({ vendorId, datasetId, onBack, onSaveSuccess }) {
                 />
               </div>
             </div>
-
-            {/* --- MODIFIED: Replaced Textareas with Smart Inputs --- */}
-
-            <div className="form-group">
-              <label htmlFor="temporal_coverage" className="form-label">Temporal Coverage</label>
-              <div className="input-wrapper">
-                {/* We pass a 'fake' event object to handleInputChange */}
-                <TemporalCoverageInput 
-                  value={formData.temporal_coverage}
-                  onChange={(newValue) => handleInputChange({ target: { name: 'temporal_coverage', value: newValue } })}
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="geographic_coverage" className="form-label">Geographic Coverage</label>
-              <div className="input-wrapper">
-                <GeographicCoverageInput
-                  value={formData.geographic_coverage}
-                  onChange={(newValue) => handleInputChange({ target: { name: 'geographic_coverage', value: newValue } })}
-                />
-              </div>
-            </div>
-            {/* --- END OF MODIFIED FIELDS --- */}
-
           </div>
         </div>
 
+        {/* Temporal and Geographic Coverage Section - Side by Side */}
+        <div className="form-section">
+          <h3>Coverage Information</h3>
+          <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+            <div style={{ marginBottom: 0 }}>
+              <TemporalCoverageInput 
+                value={formData.temporal_coverage}
+                onChange={(newValue) => handleInputChange({ target: { name: 'temporal_coverage', value: newValue } })}
+              />
+            </div>
+
+            <div style={{ marginBottom: 0 }}>
+              <GeographicCoverageInput
+                value={formData.geographic_coverage}
+                onChange={(newValue) => handleInputChange({ target: { name: 'geographic_coverage', value: newValue } })}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Dataset Columns Section */}
         <div className="form-section columns-section">
           <h3>Dataset Columns</h3>
           <div className="columns-list">
@@ -705,9 +787,6 @@ function DatasetForm({ vendorId, datasetId, onBack, onSaveSuccess }) {
         </div>
 
         <div className="form-actions">
-          <button type="button" className="btn btn-secondary" onClick={onBack} disabled={saving}>
-            Cancel
-          </button>
           <button type="submit" className="btn btn-primary" disabled={saving}>
             {saving ? (datasetId ? 'Saving...' : 'Creating...') : (datasetId ? 'Save Changes' : 'Create Dataset')}
           </button>

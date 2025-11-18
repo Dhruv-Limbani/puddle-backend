@@ -31,7 +31,7 @@ const EMPTY_VENDOR_FORM = {
 };
 
 export default function VendorProfile() {
-  const { user, token } = useAuth();
+  const { user, token, refreshVendorId } = useAuth();
   const [vendorProfile, setVendorProfile] = useState(null);
   const [formData, setFormData] = useState(EMPTY_VENDOR_FORM);
   const [loading, setLoading] = useState(true);
@@ -40,6 +40,7 @@ export default function VendorProfile() {
   const [error, setError] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [wasCreate, setWasCreate] = useState(false);
 
   useEffect(() => {
     loadVendorData();
@@ -122,13 +123,18 @@ export default function VendorProfile() {
     try {
       if (vendorProfile) {
         await vendorService.update(token, vendorProfile.id, payload);
+        setWasCreate(false);
         setShowSuccessToast(true);
         setTimeout(() => setShowSuccessToast(false), 3000);
       } else {
         await vendorService.create(token, payload);
-        setMessage('Vendor profile created successfully');
+        setWasCreate(true);
+        setShowSuccessToast(true);
+        setTimeout(() => setShowSuccessToast(false), 3000);
       }
       await loadVendorData();
+      // Refresh vendorId in AuthContext after creating/updating profile
+      await refreshVendorId();
     } catch (err) {
       setError(err.message || 'Failed to save vendor profile');
     } finally {
@@ -151,7 +157,9 @@ export default function VendorProfile() {
       {showSuccessToast && (
         <div className="success-toast">
           <div className="success-toast-icon">✓</div>
-          <div className="success-toast-message">Profile updated successfully!</div>
+          <div className="success-toast-message">
+            {wasCreate ? 'Profile created successfully' : 'Profile updated successfully'}
+          </div>
         </div>
       )}
 
@@ -176,7 +184,7 @@ export default function VendorProfile() {
                 onClick={saveProfile}
                 disabled={saving}
               >
-                {saving ? 'Updating...' : 'Confirm Update'}
+                {saving ? 'Updating...' : 'Update'}
               </button>
             </div>
           </div>

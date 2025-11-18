@@ -95,7 +95,15 @@ export default function Marketplace() {
               ) : (
                 <div className="dataset-grid">
                   {filteredDatasets.map((dataset) => (
-                    <article key={dataset.id} className="dataset-card">
+                      <article
+                        key={dataset.id}
+                        className="dataset-card"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => navigate(`/marketplace/dataset/${dataset.id}`)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/marketplace/dataset/${dataset.id}`) }}
+                        style={{ cursor: 'pointer' }}
+                      >
                       <div className="dataset-card-header">
                         <h3>{dataset.title}</h3>
                         <span className={`badge visibility-${dataset.visibility || 'public'}`}>
@@ -133,7 +141,15 @@ export default function Marketplace() {
               ) : (
                 <div className="vendor-grid">
                   {filteredVendors.map((vendor) => (
-                    <article key={vendor.id} className="vendor-card">
+                    <article
+                      key={vendor.id}
+                      className="vendor-card"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => navigate(`/marketplace/vendor/${vendor.id}`)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/marketplace/vendor/${vendor.id}`) }}
+                      style={{ cursor: 'pointer' }}
+                    >
                       <h3>{vendor.name}</h3>
                       <p className="vendor-description">{vendor.description || 'No description provided.'}</p>
                       <div className="vendor-meta">

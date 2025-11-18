@@ -51,7 +51,10 @@ export default function Login() {
       } else if (response.user?.role === 'buyer') {
         navigate('/buyer-dashboard');
       } else {
-        navigate('/dashboard');
+        // Unknown role, redirect to login
+        setError('Invalid user role. Please contact support.');
+        logout();
+        navigate('/login');
       }
 
     } catch (err) {

@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import VendorProfile from '../components/VendorProfile';
 import Marketplace from '../components/Marketplace';
-import DataCatalogTab from '../components/DataCatalog'; // <-- IMPORT THE NEW COMPONENT
+import DataCatalogTab from '../components/DataCatalog';
+import AgentManager from '../components/AgentManager';
 import {
   ProfileIcon,
   MarketplaceIcon,
@@ -12,9 +13,9 @@ import {
   PuddleLogoIcon,
   LogoutIcon,
   SidebarToggleIcon
-} from '../components/icons'; // Make sure Icons.jsx is updated
+} from '../components/icons';
 import './VendorDashboard.css';
-import '../components/DataCatalog.css'; // <-- IMPORT THE NEW CSS
+import '../components/DataCatalog.css';
 
 export default function VendorDashboard() {
   const { user, logout } = useAuth();
@@ -53,9 +54,9 @@ export default function VendorDashboard() {
       case 'marketplace':
         return <Marketplace />;
       case 'data-catalog':
-        return <DataCatalogTab />; // <-- USE THE NEW COMPONENT
+        return <DataCatalogTab />;
       case 'agents':
-        return <div className="page-placeholder">AI Agents - Coming Soon</div>;
+        return <AgentManager />;
       default:
         return <VendorProfile />;
     }
