@@ -3,35 +3,50 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import BuyerProfile from '../components/BuyerProfile';
 import Marketplace from '../components/Marketplace';
+import AcidAI from '../components/AcidAI';
 import {
   ProfileIcon,
   MarketplaceIcon,
+  AgentIcon,
   PuddleLogoIcon,
   LogoutIcon,
   SidebarToggleIcon
-} from '../components/icons';
+} from '../components/Icons';
 import './BuyerDashboard.css';
 import './VendorDashboard.css'; // Import shared form styles
 
 export default function BuyerDashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState('profile');
   const [isMinimized, setIsMinimized] = useState(false);
 
   useEffect(() => {
-    const path = location.pathname;
-    if (path.includes('marketplace')) setActiveTab('marketplace');
-    else setActiveTab('profile');
+    // Check query params for tab state (better for history navigation)
+    const searchParams = new URLSearchParams(location.search);
+    const tab = searchParams.get('tab');
+    
+    if (tab) {
+      setActiveTab(tab);
+    } else {
+      // Fallback to path check or default
+      const path = location.pathname;
+      if (path.includes('marketplace')) setActiveTab('marketplace');
+      else if (path.includes('acid-ai')) setActiveTab('acid-ai');
+      else setActiveTab('profile');
+    }
   }, [location]);
 
   const navigationItems = [
     { id: 'profile', label: 'Profile', desc: 'Manage your buyer profile', icon: ProfileIcon },
     { id: 'marketplace', label: 'Marketplace', desc: 'Search Datasets and Vendors', icon: MarketplaceIcon },
+    { id: 'acid-ai', label: 'ACID AI', desc: 'AI Assistant for Dataset Discovery', icon: AgentIcon },
   ];
 
   const handleNavigation = (item) => {
+    // Update URL with query param to support back button navigation
+    navigate(`?tab=${item.id}`);
     setActiveTab(item.id);
   };
 
@@ -41,6 +56,8 @@ export default function BuyerDashboard() {
         return <BuyerProfile />;
       case 'marketplace':
         return <Marketplace />;
+      case 'acid-ai':
+        return <AcidAI token={token} />;
       default:
         return <BuyerProfile />;
     }
@@ -115,4 +132,3 @@ export default function BuyerDashboard() {
     </div>
   );
 }
-

@@ -69,7 +69,13 @@ export default function DatasetProfile({ datasetId, onBack, onOpenVendor }) {
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Back Button */}
       <button
-        onClick={onBack}
+        onClick={() => {
+            if (onBack) {
+                onBack()
+            } else {
+                navigate(-1)
+            }
+        }}
         style={{
           display: 'inline-flex',
           alignItems: 'center',

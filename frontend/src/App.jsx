@@ -7,6 +7,7 @@ import VendorDashboard from './pages/VendorDashboard'
 import BuyerDashboard from './pages/BuyerDashboard'
 import Marketplace from './pages/Marketplace'
 import DatasetProfilePage from './pages/DatasetProfilePage'
+import LandingPage from './pages/LandingPage'
 import VendorProfilePage from './pages/VendorProfilePage'
 
 function PrivateRoute({ children }) {
@@ -89,7 +90,7 @@ function App() {
               </PrivateRoute>
             }
           />
-          <Route path="/" element={<Navigate to="/login" />} />
+          <Route path="/" element={<LandingPage />} />
         </Routes>
       </Router>
     </AuthProvider>

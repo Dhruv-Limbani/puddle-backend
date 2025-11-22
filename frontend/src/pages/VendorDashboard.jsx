@@ -13,7 +13,7 @@ import {
   PuddleLogoIcon,
   LogoutIcon,
   SidebarToggleIcon
-} from '../components/icons';
+} from '../components/Icons';
 import './VendorDashboard.css';
 import '../components/DataCatalog.css';
 

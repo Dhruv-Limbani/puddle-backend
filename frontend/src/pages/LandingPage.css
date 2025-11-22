@@ -1,0 +1,117 @@
+.landing-page-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #000;
+}
+
+.hero-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none; /* Allow clicking through to canvas if needed, but buttons need pointer-events: auto */
+  z-index: 10;
+}
+
+.hero-content {
+  text-align: center;
+  color: white;
+  pointer-events: auto;
+  max-width: 800px;
+  padding: 2rem;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.hero-title {
+  font-size: 5rem;
+  font-weight: 900;
+  letter-spacing: -2px;
+  margin: 0;
+  line-height: 1;
+  text-transform: uppercase;
+  background: linear-gradient(to right, #fff, #aaa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.3));
+}
+
+.hero-title .highlight {
+  background: linear-gradient(to right, #00f2ff, #bd00ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-subtitle {
+  font-size: 1.2rem;
+  margin: 1.5rem 0 2.5rem;
+  color: #ccc;
+  font-weight: 300;
+  letter-spacing: 1px;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+}
+
+.cta-button {
+  padding: 1rem 2.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.cta-button.primary {
+  background: white;
+  color: black;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+}
+
+.cta-button.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.4);
+}
+
+.cta-button.secondary {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: white;
+}
+
+.cta-button.secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: white;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: 3rem;
+  }
+  
+  .hero-subtitle {
+    font-size: 1rem;
+  }
+  
+  .hero-actions {
+    flex-direction: column;
+  }
+}
+
