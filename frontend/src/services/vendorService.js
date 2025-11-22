@@ -1,6 +1,21 @@
 const API_BASE_URL = '/api/v1'
 
 export const vendorService = {
+  async getMe(token) {
+    const response = await fetch(`${API_BASE_URL}/vendors/me/`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to fetch vendor profile' }))
+      throw new Error(error.detail || 'Failed to fetch vendor profile')
+    }
+
+    return await response.json()
+  },
+
   async list(token) {
     const response = await fetch(`${API_BASE_URL}/vendors/`, {
       headers: {
@@ -11,6 +26,21 @@ export const vendorService = {
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Failed to fetch vendors' }))
       throw new Error(error.detail || 'Failed to fetch vendors')
+    }
+
+    return await response.json()
+  },
+
+  async get(token, vendorId) {
+    const response = await fetch(`${API_BASE_URL}/vendors/${vendorId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to fetch vendor' }))
+      throw new Error(error.detail || 'Failed to fetch vendor')
     }
 
     return await response.json()

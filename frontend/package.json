@@ -9,9 +9,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "country-list": "^2.4.1",
+    "lucide-react": "^0.553.0",
     "react": "^18.2.0",
+    "react-country-region-selector": "^4.0.3",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.20.0"
+    "react-router-dom": "^6.20.0",
+    "react-select": "^5.10.2"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",
@@ -20,4 +24,3 @@
     "vite": "^5.0.8"
   }
 }
-

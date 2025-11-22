@@ -2,10 +2,12 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
-import Dashboard from './pages/Dashboard'
+import Auth from './pages/Auth'
 import VendorDashboard from './pages/VendorDashboard'
 import BuyerDashboard from './pages/BuyerDashboard'
 import Marketplace from './pages/Marketplace'
+import DatasetProfilePage from './pages/DatasetProfilePage'
+import VendorProfilePage from './pages/VendorProfilePage'
 
 function PrivateRoute({ children }) {
   const { isAuthenticated } = useAuth()
@@ -20,7 +22,7 @@ function VendorRoute({ children }) {
   }
 
   if (user?.role !== 'vendor' && user?.role !== 'admin') {
-    return <Navigate to="/dashboard" />
+    return <Navigate to="/login" />
   }
 
   return children
@@ -34,7 +36,7 @@ function BuyerRoute({ children }) {
   }
 
   if (user?.role !== 'buyer') {
-    return <Navigate to="/dashboard" />
+    return <Navigate to="/login" />
   }
 
   return children
@@ -45,16 +47,8 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route
-            path="/dashboard"
-            element={
-              <PrivateRoute>
-                <Dashboard />
-              </PrivateRoute>
-            }
-          />
+          <Route path="/login" element={<Auth />} />
+          <Route path="/signup" element={<Auth />} />
           <Route
             path="/vendor-dashboard"
             element={
@@ -76,6 +70,22 @@ function App() {
             element={
               <PrivateRoute>
                 <Marketplace />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/marketplace/dataset/:datasetId"
+            element={
+              <PrivateRoute>
+                <DatasetProfilePage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/marketplace/vendor/:vendorId"
+            element={
+              <PrivateRoute>
+                <VendorProfilePage />
               </PrivateRoute>
             }
           />

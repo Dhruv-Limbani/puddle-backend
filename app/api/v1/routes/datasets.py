@@ -30,7 +30,7 @@ async def verify_vendor_owns_dataset(dataset: Dataset, current_user: UserRead, d
         raise HTTPException(status_code=403, detail="Not authorized")
     vendor = await _get_vendor_for_user(db, current_user.id)
     if not vendor or str(vendor.id) != str(dataset.vendor_id):
-        raise HTTPException(status_code=403, detail="This dataset is not yours")
+        raise HTTPException(status_code=403, detail="This dataset is not owned by your vendor profile")
     return True
 
 
@@ -41,23 +41,19 @@ async def create_dataset(
     current_user: UserRead = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
-    if current_user.role not in {"admin", "vendor"}:
-        raise HTTPException(status_code=403, detail="Only vendors or admins can create datasets")
+    if current_user.role != "vendor":
+        raise HTTPException(status_code=403, detail="Only vendors can create datasets")
 
-    if current_user.role == "vendor":
-        vendor = await _get_vendor_for_user(db, current_user.id)
-        if not vendor:
-            raise HTTPException(status_code=400, detail="Vendor profile missing")
-        if str(vendor.id) != str(dataset_in.vendor_id):
-            raise HTTPException(status_code=403, detail="You can only add datasets to your own vendor")
-    else:
-        vendor = await crud_vendors.get_vendor(db, str(dataset_in.vendor_id))
-        if not vendor:
-            raise HTTPException(status_code=400, detail="Vendor does not exist")
+    vendor = await _get_vendor_for_user(db, current_user.id)
+    if not vendor:
+        raise HTTPException(status_code=400, detail="Vendor profile not found for this user")
 
-    data = dataset_in.model_dump(exclude_none=True)
+    if str(vendor.id) != str(dataset_in.vendor_id):
+        raise HTTPException(status_code=403, detail="You can only create datasets for your own vendor ID")
 
-    # Build embedding input and vector
+    data = dataset_in.model_dump()
+    
+    # Generate embedding
     embedding_input = build_embedding_input(data)
     data["embedding_input"] = embedding_input
     data["embedding"] = await generate_embedding(embedding_input)
@@ -66,7 +62,29 @@ async def create_dataset(
     return created
 
 
-# LIST DATASETS
+# --- NEW ENDPOINT for VENDOR'S OWN DATA (for Data Catalog) ---
+@router.get("/me/", response_model=List[DatasetRead])
+async def list_my_datasets(
+    current_user: UserRead = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """
+    Get all datasets owned by the currently authenticated vendor.
+    """
+    if current_user.role != "vendor":
+        raise HTTPException(status_code=403, detail="You are not a vendor")
+
+    vendor = await _get_vendor_for_user(db, current_user.id)
+    if not vendor:
+        # If vendor has no profile, they have no datasets. Return empty list.
+        return []
+
+    # Call the new CRUD function
+    results = await crud_datasets.list_datasets_by_vendor(db, str(vendor.id))
+    return results
+
+
+# --- (FIXED) LIST *PUBLIC* DATASETS (for Marketplace) ---
 @router.get("/", response_model=List[DatasetRead])
 async def list_datasets(
     search: Optional[str] = Query(None),
@@ -75,6 +93,16 @@ async def list_datasets(
     current_user: UserRead = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
+    """
+    List datasets for the marketplace.
+    - Buyers see PUBLIC datasets.
+    - Admins see ALL datasets.
+    - Vendors see PUBLIC datasets (they use /me/ for their own).
+    """
+    
+    # ** FIX: Reverted to original logic **
+    # This endpoint is for the public marketplace.
+    # The CRUD function already handles role-based filtering (e.g., buyers only see public)
     results = await crud_datasets.list_datasets(
         db=db,
         role=current_user.role,
@@ -96,9 +124,30 @@ async def get_dataset(
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
-    if current_user.role == "buyer" and dataset.visibility != "public":
+    # Security check:
+    # - Admin can see anything
+    # - Vendor can see their own
+    # - Buyer can see PUBLIC only
+    if current_user.role == "vendor":
+        # This verify helper raises 403 if not owned
+        await verify_vendor_owns_dataset(dataset, current_user, db)
+    elif current_user.role == "buyer" and dataset.visibility != "public":
         raise HTTPException(status_code=403, detail="Not authorized")
 
+    return dataset
+
+# PUBLIC DATASET PROFILE ENDPOINT (for Marketplace)
+@router.get("/public/{dataset_id}", response_model=DatasetRead)
+async def get_public_dataset(
+    dataset_id: str,
+    current_user: UserRead = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    dataset = await crud_datasets.get_dataset_with_columns(db, dataset_id)
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    if dataset.visibility != "public":
+        raise HTTPException(status_code=403, detail="Dataset is not public")
     return dataset
 
 
@@ -114,9 +163,19 @@ async def update_dataset(
     if not dataset_obj:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
+    # Verify ownership before allowing update
     await verify_vendor_owns_dataset(dataset_obj, current_user, db)
 
-    update_data = update_in.model_dump(exclude_none=True)
+    update_data = update_in.model_dump(exclude_unset=True)
+
+    # Re-generate embedding if relevant fields are changing
+    if any(key in update_data for key in ["title", "description", "domain"]):
+        # Build embedding input from the *updated* data
+        updated_view = {**dataset_obj.__dict__, **update_data}
+        embedding_input = build_embedding_input(updated_view)
+        update_data["embedding_input"] = embedding_input
+        update_data["embedding"] = await generate_embedding(embedding_input)
+
     # If columns provided, pass them through; CRUD detects and replaces accordingly.
     updated = await crud_datasets.update_dataset_with_columns(db, dataset_id, update_data)
     if not updated:

@@ -80,7 +80,7 @@ Make sure to replace the placeholders in `DATABASE_URL` with your actual databas
 Run:
 
 ```bash
-vicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8000
 ```
 
 Your backend will now be available at:
@@ -105,7 +105,7 @@ npm install
 ## 🚀 3. Start the development server
 
 ```bash
- npm run dev -- --port 8001
+npm run dev -- --port 8001
 ```
 
 Your frontend should now be running on the port 8001 displayed in the terminal
