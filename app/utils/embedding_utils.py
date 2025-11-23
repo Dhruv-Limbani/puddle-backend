@@ -49,6 +49,8 @@ def build_embedding_input(ds: Dict[str, Any]) -> str:
         pieces.append(f"Topics include: {topics_text}.")
     if description:
         pieces.append(description)
+        if description[:-1] != ".":
+            pieces.append(".")
     if col_texts:
         pieces.append("It includes columns like: " + ", ".join(col_texts))
 
