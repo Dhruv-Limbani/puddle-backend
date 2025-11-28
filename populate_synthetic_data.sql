@@ -7,13 +7,13 @@
 -- ========================================
 -- Password for all users: 'password123'
 
-INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('admin@puddle.com', '$2b$12$TwbQTP49yddcHX49EnZYnuv8J62vcW/cRurG4ciEqbIPsgX8W9zLC', 'admin', 'Admin User', TRUE);
-INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('vendor1@datamart.com', '$2b$12$TwbQTP49yddcHX49EnZYnuv8J62vcW/cRurG4ciEqbIPsgX8W9zLC', 'vendor', 'Alice Johnson', TRUE);
-INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('vendor2@insights.io', '$2b$12$TwbQTP49yddcHX49EnZYnuv8J62vcW/cRurG4ciEqbIPsgX8W9zLC', 'vendor', 'Bob Smith', TRUE);
-INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('vendor3@analytics.net', '$2b$12$TwbQTP49yddcHX49EnZYnuv8J62vcW/cRurG4ciEqbIPsgX8W9zLC', 'vendor', 'Carol White', TRUE);
-INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('buyer1@research.edu', '$2b$12$TwbQTP49yddcHX49EnZYnuv8J62vcW/cRurG4ciEqbIPsgX8W9zLC', 'buyer', 'David Brown', TRUE);
-INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('buyer2@startup.io', '$2b$12$TwbQTP49yddcHX49EnZYnuv8J62vcW/cRurG4ciEqbIPsgX8W9zLC', 'buyer', 'Emma Davis', TRUE);
-INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('buyer3@enterprise.com', '$2b$12$TwbQTP49yddcHX49EnZYnuv8J62vcW/cRurG4ciEqbIPsgX8W9zLC', 'buyer', 'Frank Miller', TRUE);
+INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('admin@puddle.com', '$2b$12$DN/xp..cyGagc.OQdssIcuYyEzeMxVK.HekkPM76DuFbFHq6bo1Je', 'admin', 'Admin User', TRUE);
+INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('vendor1@datamart.com', '$2b$12$DN/xp..cyGagc.OQdssIcuYyEzeMxVK.HekkPM76DuFbFHq6bo1Je', 'vendor', 'Alice Johnson', TRUE);
+INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('vendor2@insights.io', '$2b$12$DN/xp..cyGagc.OQdssIcuYyEzeMxVK.HekkPM76DuFbFHq6bo1Je', 'vendor', 'Bob Smith', TRUE);
+INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('vendor3@analytics.net', '$2b$12$DN/xp..cyGagc.OQdssIcuYyEzeMxVK.HekkPM76DuFbFHq6bo1Je', 'vendor', 'Carol White', TRUE);
+INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('buyer1@research.edu', '$2b$12$DN/xp..cyGagc.OQdssIcuYyEzeMxVK.HekkPM76DuFbFHq6bo1Je', 'buyer', 'David Brown', TRUE);
+INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('buyer2@startup.io', '$2b$12$DN/xp..cyGagc.OQdssIcuYyEzeMxVK.HekkPM76DuFbFHq6bo1Je', 'buyer', 'Emma Davis', TRUE);
+INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('buyer3@enterprise.com', '$2b$12$DN/xp..cyGagc.OQdssIcuYyEzeMxVK.HekkPM76DuFbFHq6bo1Je', 'buyer', 'Frank Miller', TRUE);
 
 -- ========================================
 -- 2. VENDORS
@@ -79,7 +79,27 @@ INSERT INTO dataset_columns (dataset_id, name, description, data_type, sample_va
 
 
 -- ========================================
+-- 6. CONVERSATIONS
+-- ========================================
+
+INSERT INTO conversations (user_id, title) VALUES ((SELECT id FROM users WHERE email = 'buyer1@research.edu'), 'Financial Data Discovery');
+
+-- ========================================
+-- 7. CHAT MESSAGES
+-- ========================================
+
+INSERT INTO chat_messages (conversation_id, role, content, tool_call) VALUES ((SELECT id FROM conversations WHERE title = 'Financial Data Discovery' LIMIT 1), 'user', 'I am looking for stock market data for 2023.', NULL);
+INSERT INTO chat_messages (conversation_id, role, content, tool_call) VALUES ((SELECT id FROM conversations WHERE title = 'Financial Data Discovery' LIMIT 1), 'assistant', 'I found a dataset that matches your criteria.', '{"name": "search_datasets_semantic", "args": {"query": "stock market data 2023"}}'::jsonb);
+INSERT INTO chat_messages (conversation_id, role, content, tool_call) VALUES ((SELECT id FROM conversations WHERE title = 'Financial Data Discovery' LIMIT 1), 'user', 'Great, can I ask the vendor about bulk pricing?', NULL);
+
+-- ========================================
+-- 8. INQUIRIES (Negotiations)
+-- ========================================
+
+INSERT INTO inquiries (buyer_id, vendor_id, dataset_id, conversation_id, buyer_inquiry, status) VALUES ((SELECT id FROM buyers WHERE user_id = (SELECT id FROM users WHERE email = 'buyer1@research.edu')), (SELECT id FROM vendors WHERE user_id = (SELECT id FROM users WHERE email = 'vendor1@datamart.com')), (SELECT id FROM datasets WHERE title = 'Global Stock Market Data 2020-2024'), (SELECT id FROM conversations WHERE title = 'Financial Data Discovery' LIMIT 1), '{"summary": "Requesting 2023 historical data for US market.", "questions": [{"id": "q1", "text": "Is the data adjusted for splits?", "status": "open"}], "constraints": {"budget": "under $5k"}}'::jsonb, 'submitted');
+INSERT INTO inquiries (buyer_id, vendor_id, dataset_id, conversation_id, buyer_inquiry, vendor_response, status) VALUES ((SELECT id FROM buyers WHERE user_id = (SELECT id FROM users WHERE email = 'buyer2@startup.io')), (SELECT id FROM vendors WHERE user_id = (SELECT id FROM users WHERE email = 'vendor2@insights.io')), (SELECT id FROM datasets WHERE title = 'Patient Outcomes Dataset 2023'), NULL, '{"summary": "Need to know HIPAA compliance details.", "questions": [{"id": "q1", "text": "Is this HIPAA compliant?", "status": "open"}]}'::jsonb, '{"internal_notes": "Confidence high on compliance.", "answers": [{"q_ref": "q1", "text": "Yes, fully anonymized.", "confidence": "high"}], "required_human_input": ["verify_cert"]}'::jsonb, 'pending_review');
+INSERT INTO inquiries (buyer_id, vendor_id, dataset_id, buyer_inquiry, status) VALUES ((SELECT id FROM buyers WHERE user_id = (SELECT id FROM users WHERE email = 'buyer3@enterprise.com')), (SELECT id FROM vendors WHERE user_id = (SELECT id FROM users WHERE email = 'vendor3@analytics.net')), (SELECT id FROM datasets WHERE title = 'E-commerce Transactions 2024'), '{ "summary": "Looking for bulk discount" }'::jsonb, 'responded');
+
+-- ========================================
 -- DONE
 -- ========================================
--- All synthetic data inserted successfully!
--- You can now log in with any user using password: 'password123'

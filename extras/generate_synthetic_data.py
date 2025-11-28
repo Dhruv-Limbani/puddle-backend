@@ -485,24 +485,100 @@ async def generate_sql():
             )
         sql_lines.append("")
     
-    sql_lines.extend([
-        "",
-        "-- ========================================",
-        "-- DONE",
-        "-- ========================================",
-        "-- All synthetic data inserted successfully!",
-        "-- You can now log in with any user using password: 'password123'",
-        "",
-    ])
+# --- 6. CONVERSATIONS ---
+    sql_lines.extend(["", "-- ========================================", "-- 6. CONVERSATIONS", "-- ========================================", ""])
+    
+    # We use a subquery to get user_id for buyer1
+    convo_title = "Financial Data Discovery"
+    sql_lines.append(
+        f"INSERT INTO conversations (user_id, title) "
+        f"VALUES ((SELECT id FROM users WHERE email = 'buyer1@research.edu'), '{convo_title}');"
+    )
+
+    # --- 7. CHAT MESSAGES ---
+    sql_lines.extend(["", "-- ========================================", "-- 7. CHAT MESSAGES", "-- ========================================", ""])
+    
+    # We reference the conversation created above
+    convo_subquery = f"(SELECT id FROM conversations WHERE title = '{convo_title}' LIMIT 1)"
+    
+    msgs = [
+        {"role": "user", "content": "I am looking for stock market data for 2023.", "tool": None},
+        {"role": "assistant", "content": "I found a dataset that matches your criteria.", "tool": {"name": "search_datasets_semantic", "args": {"query": "stock market data 2023"}}},
+        {"role": "user", "content": "Great, can I ask the vendor about bulk pricing?", "tool": None}
+    ]
+    
+    for m in msgs:
+        tool_json = f"'{json.dumps(m['tool'])}'::jsonb" if m['tool'] else "NULL"
+        sql_lines.append(
+            f"INSERT INTO chat_messages (conversation_id, role, content, tool_call) "
+            f"VALUES ({convo_subquery}, '{m['role']}', '{m['content']}', {tool_json});"
+        )
+
+    # --- 8. INQUIRIES ---
+    sql_lines.extend(["", "-- ========================================", "-- 8. INQUIRIES (Negotiations)", "-- ========================================", ""])
+
+    # Inquiry 1: SUBMITTED (Waiting for Vendor AI)
+    # Buyer1 -> Vendor1 (Stock Data)
+    buyer1_state = {
+        "summary": "Requesting 2023 historical data for US market.",
+        "questions": [{"id": "q1", "text": "Is the data adjusted for splits?", "status": "open"}],
+        "constraints": {"budget": "under $5k"}
+    }
+    
+    sql_lines.append(
+        f"INSERT INTO inquiries (buyer_id, vendor_id, dataset_id, conversation_id, buyer_inquiry, status) "
+        f"VALUES ("
+        f"(SELECT id FROM buyers WHERE user_id = (SELECT id FROM users WHERE email = 'buyer1@research.edu')), "
+        f"(SELECT id FROM vendors WHERE user_id = (SELECT id FROM users WHERE email = 'vendor1@datamart.com')), "
+        f"(SELECT id FROM datasets WHERE title = 'Global Stock Market Data 2020-2024'), "
+        f"{convo_subquery}, "
+        f"'{json.dumps(buyer1_state)}'::jsonb, "
+        f"'submitted');"
+    )
+
+    # Inquiry 2: PENDING REVIEW (Vendor AI Drafted, Human needs to check)
+    # Buyer2 -> Vendor2 (Patient Data)
+    buyer2_state = {
+        "summary": "Need to know HIPAA compliance details.",
+        "questions": [{"id": "q1", "text": "Is this HIPAA compliant?", "status": "open"}]
+    }
+    vendor2_response = {
+        "internal_notes": "Confidence high on compliance.",
+        "answers": [{"q_ref": "q1", "text": "Yes, fully anonymized.", "confidence": "high"}],
+        "required_human_input": ["verify_cert"]
+    }
+    
+    sql_lines.append(
+        f"INSERT INTO inquiries (buyer_id, vendor_id, dataset_id, conversation_id, buyer_inquiry, vendor_response, status) "
+        f"VALUES ("
+        f"(SELECT id FROM buyers WHERE user_id = (SELECT id FROM users WHERE email = 'buyer2@startup.io')), "
+        f"(SELECT id FROM vendors WHERE user_id = (SELECT id FROM users WHERE email = 'vendor2@insights.io')), "
+        f"(SELECT id FROM datasets WHERE title = 'Patient Outcomes Dataset 2023'), "
+        f"NULL, " # No chat linked for this one
+        f"'{json.dumps(buyer2_state)}'::jsonb, "
+        f"'{json.dumps(vendor2_response)}'::jsonb, "
+        f"'pending_review');"
+    )
+    
+    # Inquiry 3: RESPONDED (Done)
+    # Buyer3 -> Vendor3 (Retail Data)
+    sql_lines.append(
+        f"INSERT INTO inquiries (buyer_id, vendor_id, dataset_id, buyer_inquiry, status) "
+        f"VALUES ("
+        f"(SELECT id FROM buyers WHERE user_id = (SELECT id FROM users WHERE email = 'buyer3@enterprise.com')), "
+        f"(SELECT id FROM vendors WHERE user_id = (SELECT id FROM users WHERE email = 'vendor3@analytics.net')), "
+        f"(SELECT id FROM datasets WHERE title = 'E-commerce Transactions 2024'), "
+        f"'{{ \"summary\": \"Looking for bulk discount\" }}'::jsonb, "
+        f"'responded');"
+    )
+
+    sql_lines.extend(["", "-- ========================================", "-- DONE", "-- ========================================", ""])
     
     return "\n".join(sql_lines)
 
 
 async def main():
-    """Main entry point."""
     print("Generating synthetic data SQL script...")
-    print("Hashing passwords with bcrypt (this may take a moment)...")
-    
     sql_script = await generate_sql()
     
     output_file = "populate_synthetic_data.sql"
@@ -510,18 +586,12 @@ async def main():
         f.write(sql_script)
     
     print(f"\n✓ SQL script generated: {output_file}")
-    print("\nTo populate your database, run:")
-    print(f"  psql -U <username> -d <database_name> -f {output_file}")
-    print("\nAll users have password: 'password123'")
-    print("\nUsers created:")
-    print("  - admin@puddle.com (admin)")
-    print("  - vendor1@datamart.com (vendor)")
-    print("  - vendor2@insights.io (vendor)")
-    print("  - vendor3@analytics.net (vendor)")
-    print("  - buyer1@research.edu (buyer)")
-    print("  - buyer2@startup.io (buyer)")
-    print("  - buyer3@enterprise.com (buyer)")
-
+    print("\nUsers created (password: 'password123'):")
+    print("  - admin@puddle.com, vendor1@datamart.com, buyer1@research.edu, etc.")
+    print("\nInquiries created:")
+    print("  1. Buyer1 -> Vendor1 (Status: 'submitted')")
+    print("  2. Buyer2 -> Vendor2 (Status: 'pending_review')")
+    print("  3. Buyer3 -> Vendor3 (Status: 'responded')")
 
 if __name__ == "__main__":
     asyncio.run(main())
