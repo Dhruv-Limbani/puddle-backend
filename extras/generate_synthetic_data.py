@@ -8,6 +8,15 @@ Outputs a SQL file ready to run against PostgreSQL.
 import sys
 from passlib.context import CryptContext
 import json
+import os
+from google import genai
+from google.genai import types
+from typing import List, Dict, Any
+import asyncio
+from dotenv import load_dotenv
+load_dotenv()
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # Initialize bcrypt context (same as backend)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -20,8 +29,79 @@ def hash_password(password: str) -> str:
     password = password.encode("utf-8")[:72].decode("utf-8", errors="ignore")
     return pwd_context.hash(password)
 
+def build_embedding_input(ds: Dict[str, Any]) -> str:
+    """
+    Replicates logic from app/utils/embedding_utils.py
+    Builds a text string suitable for embedding from a dataset dictionary.
+    """
+    domain: str = ds.get("domain") or ""
+    topics = ds.get("topics") or []
+    description: str = ds.get("description") or ds.get("title") or ""
+    columns = ds.get("columns") or []
 
-def generate_sql():
+    col_texts: List[str] = []
+    for col in columns:
+        # In this script, col is always a dict
+        c = col
+        name = c.get("name", "")
+        desc = c.get("description", "")
+        if name and desc:
+            col_texts.append(f"{name} — {desc}")
+        elif name:
+            col_texts.append(name)
+
+    topics_text: str = ", ".join(topics) if isinstance(topics, (list, tuple)) else str(topics)
+
+    pieces: List[str] = []
+    if domain:
+        pieces.append(f"This dataset focuses on the {domain} domain.")
+    if topics_text:
+        pieces.append(f"Topics include: {topics_text}.")
+    if description:
+        pieces.append(description)
+        if description[:-1] != ".":
+            pieces.append(".")
+    if col_texts:
+        pieces.append("It includes columns like: " + ", ".join(col_texts))
+
+    result: str = " ".join(pieces).strip()
+    return result
+
+
+async def generate_embedding_vector(text: str, model: str = "gemini-embedding-001") -> List[float]:
+    """
+    Generate embedding using Google Gemini API.
+    """
+    api_key = GEMINI_API_KEY
+    if not api_key:
+        return [0.0] * 1536
+
+    try:
+        def sync_call():
+            client = genai.Client(api_key=api_key)
+            resp = client.models.embed_content(
+                model=model,
+                contents=text,
+                config=types.EmbedContentConfig(
+                    task_type="SEMANTIC_SIMILARITY",
+                    output_dimensionality=1536,
+                ),
+            )
+            # Handle response structure variation
+            try:
+                return list(resp.embeddings[0].values)
+            except Exception:
+                if isinstance(resp, dict) and resp.get("embeddings"):
+                    return list(resp["embeddings"][0]["values"])
+                raise
+
+        # Run sync API call in thread to avoid blocking
+        return await asyncio.to_thread(sync_call)
+    except Exception as e:
+        return [0.0] * 1536
+
+
+async def generate_sql():
     """Generate SQL INSERT statements with synthetic data."""
     
     sql_lines = [
@@ -29,10 +109,6 @@ def generate_sql():
         "-- Puddle Synthetic Data Population Script",
         "-- Generated with bcrypt password hashing",
         "-- ========================================",
-        "",
-        "-- Clean existing data (optional - comment out if you want to keep existing data)",
-        "-- TRUNCATE TABLE chat_messages, chats, dataset_columns, datasets, ai_agents, buyers, vendors, users CASCADE;",
-        "",
         "-- ========================================",
         "-- 1. USERS",
         "-- ========================================",
@@ -381,17 +457,19 @@ def generate_sql():
         geographic_json = json.dumps(ds['geographic_coverage']).replace("'", "''")
         
         # Build embedding_input (simplified - backend will regenerate proper embeddings)
-        embedding_input = f"{ds['title']} {ds['description']} {ds['domain']}"
+        embedding_text_input = build_embedding_input(ds)
+        vector_float = await generate_embedding_vector(embedding_text_input)
+        vector_str = str(vector_float)
         
         sql_lines.append(
             f"INSERT INTO datasets (vendor_id, title, status, visibility, description, domain, dataset_type, "
-            f"granularity, pricing_model, license, topics, entities, temporal_coverage, geographic_coverage, embedding_input) "
+            f"granularity, pricing_model, license, topics, entities, temporal_coverage, geographic_coverage, embedding_input, embedding) "
             f"VALUES ("
             f"(SELECT id FROM vendors WHERE user_id = (SELECT id FROM users WHERE email = '{ds['vendor_email']}')), "
             f"'{ds['title']}', '{ds['status']}', '{ds['visibility']}', '{ds['description']}', "
             f"'{ds['domain']}', '{ds['dataset_type']}', '{ds['granularity']}', '{ds['pricing_model']}', "
             f"'{ds['license']}', '{topics_json}'::jsonb, '{entities_json}'::jsonb, "
-            f"'{temporal_json}'::jsonb, '{geographic_json}'::jsonb, '{embedding_input}');"
+            f"'{temporal_json}'::jsonb, '{geographic_json}'::jsonb, '{embedding_text_input}', '{vector_str}'::vector);"
         )
         
         # Add columns for this dataset
@@ -420,12 +498,12 @@ def generate_sql():
     return "\n".join(sql_lines)
 
 
-def main():
+async def main():
     """Main entry point."""
     print("Generating synthetic data SQL script...")
     print("Hashing passwords with bcrypt (this may take a moment)...")
     
-    sql_script = generate_sql()
+    sql_script = await generate_sql()
     
     output_file = "populate_synthetic_data.sql"
     with open(output_file, "w", encoding="utf-8") as f:
@@ -446,4 +524,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

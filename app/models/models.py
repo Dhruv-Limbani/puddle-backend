@@ -62,7 +62,6 @@ class User(Base):
 
     vendor_profile = relationship("Vendor", uselist=False, back_populates="user")
     buyer_profile = relationship("Buyer", uselist=False, back_populates="user")
-    chats = relationship("Chat", back_populates="user", cascade="all, delete-orphan")
 
 
 # =============================
@@ -96,7 +95,6 @@ class Vendor(Base):
     user = relationship("User", back_populates="vendor_profile")
     datasets = relationship("Dataset", back_populates="vendor", cascade="all, delete-orphan")
     ai_agents = relationship("AIAgent", back_populates="vendor", cascade="all, delete-orphan")
-    chats = relationship("Chat", back_populates="vendor")
 
 
 # =============================
@@ -150,7 +148,6 @@ class AIAgent(Base):
     updated_at = Column(DateTime, default=datetime.utcnow)
 
     vendor = relationship("Vendor", back_populates="ai_agents")
-    chats = relationship("Chat", back_populates="agent")
 
 
 # =============================
@@ -206,48 +203,3 @@ class DatasetColumn(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     dataset = relationship("Dataset", back_populates="columns")
-
-
-# =============================
-# CHATS
-# =============================
-
-class Chat(Base):
-    __tablename__ = "chats"
-
-    id = uuid_column(primary_key=True)
-    if PG_UUID is not None:
-        user_id = Column(PG_UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"))
-        vendor_id = Column(PG_UUID(as_uuid=False), ForeignKey("vendors.id", ondelete="SET NULL"))
-        agent_id = Column(PG_UUID(as_uuid=False), ForeignKey("ai_agents.id", ondelete="SET NULL"))
-    else:
-        user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"))
-        vendor_id = Column(String(36), ForeignKey("vendors.id", ondelete="SET NULL"))
-        agent_id = Column(String(36), ForeignKey("ai_agents.id", ondelete="SET NULL"))
-    chat_type = Column(String(50), nullable=False)
-    title = Column(String(255))
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow)
-
-    user = relationship("User", back_populates="chats")
-    vendor = relationship("Vendor", back_populates="chats")
-    agent = relationship("AIAgent", back_populates="chats")
-    messages = relationship("ChatMessage", back_populates="chat", cascade="all, delete-orphan")
-
-
-# =============================
-# CHAT MESSAGES
-# =============================
-
-class ChatMessage(Base):
-    __tablename__ = "chat_messages"
-
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    chat_id = Column(String(36), ForeignKey("chats.id", ondelete="CASCADE"))
-    sender_type = Column(String(50), nullable=False)
-    message = Column(Text, nullable=False)
-    message_metadata = Column(JSONB if JSONB else JSON)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    chat = relationship("Chat", back_populates="messages")
