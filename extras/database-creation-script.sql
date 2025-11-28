@@ -1,6 +1,7 @@
 -- 1 Lowest-level dependent tables
+DROP TABLE IF EXISTS inquiries CASCADE;
 DROP TABLE IF EXISTS chat_messages CASCADE;
-DROP TABLE IF EXISTS chats CASCADE;
+DROP TABLE IF EXISTS conversations CASCADE;
 
 -- 2 Entities depending on users
 DROP TABLE IF EXISTS dataset_columns CASCADE;
@@ -161,40 +162,59 @@ CREATE INDEX idx_dataset_columns_dataset_id
 ON dataset_columns(dataset_id);
 
 
--- =============================
--- 7. CHATS
--- =============================
-CREATE TABLE chats (
+-- CONVERSATIONS
+CREATE TABLE conversations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,       -- who started the chat
-    vendor_id UUID REFERENCES vendors(id) ON DELETE SET NULL,  -- NULL for discovery chats
-    agent_id UUID REFERENCES ai_agents(id) ON DELETE SET NULL, -- optional vendor agent
-    chat_type VARCHAR(50) NOT NULL CHECK (chat_type IN ('discovery', 'vendor')),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     title VARCHAR(255),
-    is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX idx_chats_user_id ON chats(user_id);
-CREATE INDEX idx_chats_vendor_id ON chats(vendor_id);
-CREATE INDEX idx_chats_chat_type ON chats(chat_type);
-
--- =============================
--- 8. CHAT MESSAGES
--- =============================
+-- CHAT MESSAGES  
 CREATE TABLE chat_messages (
     id BIGSERIAL PRIMARY KEY,
-    chat_id UUID REFERENCES chats(id) ON DELETE CASCADE,
-    sender_type VARCHAR(50) NOT NULL CHECK (sender_type IN ('user', 'agent', 'system')),
-    message TEXT NOT NULL,
-    message_metadata JSONB,  -- e.g. model name, token usage, retrieval context
+    conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+    role VARCHAR(20) CHECK (role IN ('user', 'assistant')) NOT NULL,
+    content TEXT NOT NULL,
+    tool_call JSONB,  -- renamed from tool_call_metadata (shorter)
     created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX idx_chat_messages_chat_id ON chat_messages(chat_id);
-CREATE INDEX idx_chat_messages_sender_type ON chat_messages(sender_type);
-CREATE INDEX idx_chat_messages_created_at ON chat_messages(created_at DESC);
+-- INQUIRIES
+CREATE TABLE inquiries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    
+    -- RELATIONSHIPS
+    buyer_id UUID REFERENCES buyers(id) ON DELETE CASCADE,
+    vendor_id UUID REFERENCES vendors(id) ON DELETE CASCADE,
+    dataset_id UUID REFERENCES datasets(id) ON DELETE CASCADE,
+    conversation_id UUID REFERENCES conversations(id) ON DELETE SET NULL,
+    
+    -- BUYER STATE (ACID writes, BASE reads)
+    buyer_inquiry JSONB DEFAULT '{}'::JSONB,
+    
+    -- VENDOR STATE (BASE writes, ACID reads)
+    vendor_response JSONB DEFAULT '{}'::JSONB,
+    
+    -- STATUS
+    status VARCHAR(50) DEFAULT 'draft' CHECK (status IN (
+        'draft',           -- ACID still building it
+        'submitted',       -- Sent to vendor
+        'pending_review',  -- Vendor human needs to review
+        'responded',       -- Vendor responded, buyer can see
+        'accepted',        -- Deal done
+        'rejected'         -- Deal lost
+    )),
+    
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX idx_inquiries_vendor_status ON inquiries(vendor_id, status);
+CREATE INDEX idx_inquiries_buyer_id ON inquiries(buyer_id);
+
 
 
 

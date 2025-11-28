@@ -2,22 +2,18 @@
 -- Puddle Synthetic Data Population Script
 -- Generated with bcrypt password hashing
 -- ========================================
-
--- Clean existing data (optional - comment out if you want to keep existing data)
--- TRUNCATE TABLE chat_messages, chats, dataset_columns, datasets, ai_agents, buyers, vendors, users CASCADE;
-
 -- ========================================
 -- 1. USERS
 -- ========================================
 -- Password for all users: 'password123'
 
-INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('admin@puddle.com', '$2b$12$U0yzV3qQKGeor32NsA1cNelYPntHKnN1QC2.kpb/GTrRBetDQIrbK', 'admin', 'Admin User', TRUE);
-INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('vendor1@datamart.com', '$2b$12$U0yzV3qQKGeor32NsA1cNelYPntHKnN1QC2.kpb/GTrRBetDQIrbK', 'vendor', 'Alice Johnson', TRUE);
-INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('vendor2@insights.io', '$2b$12$U0yzV3qQKGeor32NsA1cNelYPntHKnN1QC2.kpb/GTrRBetDQIrbK', 'vendor', 'Bob Smith', TRUE);
-INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('vendor3@analytics.net', '$2b$12$U0yzV3qQKGeor32NsA1cNelYPntHKnN1QC2.kpb/GTrRBetDQIrbK', 'vendor', 'Carol White', TRUE);
-INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('buyer1@research.edu', '$2b$12$U0yzV3qQKGeor32NsA1cNelYPntHKnN1QC2.kpb/GTrRBetDQIrbK', 'buyer', 'David Brown', TRUE);
-INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('buyer2@startup.io', '$2b$12$U0yzV3qQKGeor32NsA1cNelYPntHKnN1QC2.kpb/GTrRBetDQIrbK', 'buyer', 'Emma Davis', TRUE);
-INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('buyer3@enterprise.com', '$2b$12$U0yzV3qQKGeor32NsA1cNelYPntHKnN1QC2.kpb/GTrRBetDQIrbK', 'buyer', 'Frank Miller', TRUE);
+INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('admin@puddle.com', '$2b$12$TwbQTP49yddcHX49EnZYnuv8J62vcW/cRurG4ciEqbIPsgX8W9zLC', 'admin', 'Admin User', TRUE);
+INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('vendor1@datamart.com', '$2b$12$TwbQTP49yddcHX49EnZYnuv8J62vcW/cRurG4ciEqbIPsgX8W9zLC', 'vendor', 'Alice Johnson', TRUE);
+INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('vendor2@insights.io', '$2b$12$TwbQTP49yddcHX49EnZYnuv8J62vcW/cRurG4ciEqbIPsgX8W9zLC', 'vendor', 'Bob Smith', TRUE);
+INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('vendor3@analytics.net', '$2b$12$TwbQTP49yddcHX49EnZYnuv8J62vcW/cRurG4ciEqbIPsgX8W9zLC', 'vendor', 'Carol White', TRUE);
+INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('buyer1@research.edu', '$2b$12$TwbQTP49yddcHX49EnZYnuv8J62vcW/cRurG4ciEqbIPsgX8W9zLC', 'buyer', 'David Brown', TRUE);
+INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('buyer2@startup.io', '$2b$12$TwbQTP49yddcHX49EnZYnuv8J62vcW/cRurG4ciEqbIPsgX8W9zLC', 'buyer', 'Emma Davis', TRUE);
+INSERT INTO users (email, password_hash, role, full_name, is_active) VALUES ('buyer3@enterprise.com', '$2b$12$TwbQTP49yddcHX49EnZYnuv8J62vcW/cRurG4ciEqbIPsgX8W9zLC', 'buyer', 'Frank Miller', TRUE);
 
 -- ========================================
 -- 2. VENDORS

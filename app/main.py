@@ -47,15 +47,7 @@ app = FastAPI(
         {
             "name": "authentication",
             "description": "User registration and login",
-        },
-        {
-            "name": "chats",
-            "description": "Chat sessions between users and vendors",
-        },
-        {
-            "name": "chat-messages",
-            "description": "Messages within chat sessions",
-        },
+        }
     ],
 )
 
