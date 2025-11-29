@@ -14,6 +14,11 @@ class InquiryCreate(InquiryBase):
     dataset_id: UUID
     conversation_id: Optional[UUID] = None
 
+class InquiryUpdate(BaseModel):
+    buyer_inquiry: Optional[Dict[str, Any]] = None
+    vendor_response: Optional[Dict[str, Any]] = None
+    status: Optional[str] = None
+
 class InquiryRead(InquiryBase):
     id: UUID
     buyer_id: UUID
@@ -26,3 +31,4 @@ class InquiryRead(InquiryBase):
     model_config = {
         "from_attributes": True
     }
+

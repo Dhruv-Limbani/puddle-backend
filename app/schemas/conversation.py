@@ -9,6 +9,9 @@ class ConversationBase(BaseModel):
 class ConversationCreate(ConversationBase):
     user_id: UUID
 
+class ConversationUpdate(BaseModel):
+    title: Optional[str] = None
+
 class ConversationRead(ConversationBase):
     id: UUID
     user_id: UUID
@@ -18,3 +21,4 @@ class ConversationRead(ConversationBase):
     model_config = {
         "from_attributes": True
     }
+

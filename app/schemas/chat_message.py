@@ -6,7 +6,7 @@ from pydantic import BaseModel
 class ChatMessageBase(BaseModel):
     role: str
     content: str
-    tool_call: Optional[Dict[str, Any]] = None
+    tool_call: Optional[Any] = None
 
 class ChatMessageCreate(ChatMessageBase):
     conversation_id: UUID
