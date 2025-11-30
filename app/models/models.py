@@ -62,6 +62,7 @@ class User(Base):
 
     vendor_profile = relationship("Vendor", uselist=False, back_populates="user")
     buyer_profile = relationship("Buyer", uselist=False, back_populates="user")
+    conversations = relationship("Conversation", back_populates="user", cascade="all, delete-orphan")
 
 
 # =============================
@@ -95,6 +96,7 @@ class Vendor(Base):
     user = relationship("User", back_populates="vendor_profile")
     datasets = relationship("Dataset", back_populates="vendor", cascade="all, delete-orphan")
     ai_agents = relationship("AIAgent", back_populates="vendor", cascade="all, delete-orphan")
+    inquiries = relationship("Inquiry", back_populates="vendor", cascade="all, delete-orphan")
 
 
 # =============================
@@ -125,6 +127,7 @@ class Buyer(Base):
     updated_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="buyer_profile")
+    inquiries = relationship("Inquiry", back_populates="buyer", cascade="all, delete-orphan")
 
 
 # =============================
@@ -182,6 +185,7 @@ class Dataset(Base):
 
     vendor = relationship("Vendor", back_populates="datasets")
     columns = relationship("DatasetColumn", back_populates="dataset", cascade="all, delete-orphan")
+    inquiries = relationship("Inquiry", back_populates="dataset", cascade="all, delete-orphan")
 
 
 # =============================
@@ -203,3 +207,85 @@ class DatasetColumn(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     dataset = relationship("Dataset", back_populates="columns")
+
+
+# =============================
+# CONVERSATIONS
+# =============================
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+
+    id = uuid_column(primary_key=True)
+    if PG_UUID is not None:
+        user_id = Column(PG_UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"))
+    else:
+        user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"))
+    title = Column(String(255))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    user = relationship("User", back_populates="conversations")
+    messages = relationship("ChatMessage", back_populates="conversation", cascade="all, delete-orphan")
+    inquiries = relationship("Inquiry", back_populates="conversation")
+
+
+# =============================
+# CHAT MESSAGES
+# =============================
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    if PG_UUID is not None:
+        conversation_id = Column(PG_UUID(as_uuid=False), ForeignKey("conversations.id", ondelete="CASCADE"))
+    else:
+        conversation_id = Column(String(36), ForeignKey("conversations.id", ondelete="CASCADE"))
+    role = Column(String(20), nullable=False)  # 'user' or 'assistant'
+    content = Column(Text, nullable=False)
+    tool_call = Column(JSONB if JSONB else JSON)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    conversation = relationship("Conversation", back_populates="messages")
+
+
+# =============================
+# INQUIRIES
+# =============================
+
+class Inquiry(Base):
+    __tablename__ = "inquiries"
+
+    id = uuid_column(primary_key=True)
+
+    # Foreign Keys
+    if PG_UUID is not None:
+        buyer_id = Column(PG_UUID(as_uuid=False), ForeignKey("buyers.id", ondelete="CASCADE"))
+        vendor_id = Column(PG_UUID(as_uuid=False), ForeignKey("vendors.id", ondelete="CASCADE"))
+        dataset_id = Column(PG_UUID(as_uuid=False), ForeignKey("datasets.id", ondelete="CASCADE"))
+        conversation_id = Column(PG_UUID(as_uuid=False), ForeignKey("conversations.id", ondelete="SET NULL"))
+    else:
+        buyer_id = Column(String(36), ForeignKey("buyers.id", ondelete="CASCADE"))
+        vendor_id = Column(String(36), ForeignKey("vendors.id", ondelete="CASCADE"))
+        dataset_id = Column(String(36), ForeignKey("datasets.id", ondelete="CASCADE"))
+        conversation_id = Column(String(36), ForeignKey("conversations.id", ondelete="SET NULL"))
+
+    # JSON State
+    buyer_inquiry = Column(JSONB if JSONB else JSON, default=dict)
+    vendor_response = Column(JSONB if JSONB else JSON, default=dict)
+
+    # Status
+    status = Column(String(50), default="draft")
+    # Allowed values: 'draft', 'submitted', 'pending_review', 'responded', 'accepted', 'rejected'
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    buyer = relationship("Buyer", back_populates="inquiries")
+    vendor = relationship("Vendor", back_populates="inquiries")
+    dataset = relationship("Dataset", back_populates="inquiries")
+    conversation = relationship("Conversation", back_populates="inquiries")
