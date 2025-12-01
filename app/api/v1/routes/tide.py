@@ -2,10 +2,10 @@
 TIDE Agent Routes - Vendor-facing AI assistant
 
 This module provides endpoints for:
-- Vendor inquiry management
-- AI-powered inquiry summarization
-- Vendor response handling
-- Vendor chat with TIDE
+ Vendor inquiry management
+ AI-powered inquiry summarization
+ Vendor response handling
+ Vendor chat with TIDE
 """
 
 from typing import List, Dict, Any, Optional
@@ -15,7 +15,6 @@ from sqlalchemy import select
 from uuid import UUID
 from pydantic import BaseModel
 from datetime import datetime
-import json
 
 from app.core.db import get_session
 from app.core.auth import get_current_user
@@ -59,29 +58,6 @@ async def _verify_vendor_access(
     
     return vendor
 
-
-async def _get_inquiry_for_vendor(
-    db: AsyncSession, 
-    inquiry_id: UUID, 
-    vendor: Vendor
-) -> Inquiry:
-    """Get inquiry and verify it belongs to the vendor"""
-    inquiry = await crud_inquiry.get_inquiry(db, inquiry_id)
-    if not inquiry:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="Inquiry not found"
-        )
-    
-    if str(inquiry.vendor_id) != str(vendor.id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Not authorized to access this inquiry"
-        )
-    
-    return inquiry
-
-
 # ==========================================
 # PYDANTIC SCHEMAS FOR TIDE
 # ==========================================
@@ -110,8 +86,6 @@ class InquirySummaryResponse(BaseModel):
     dataset_title: Optional[str] = None
     status: str
     buyer_requirements: Optional[Dict[str, Any]] = None
-
-
 # ==========================================
 # INQUIRY ENDPOINTS (Vendor View)
 # ==========================================
@@ -211,7 +185,9 @@ async def get_inquiry_details(
     - Buyer information (limited for privacy)
     """
     vendor = await _verify_vendor_access(db, current_user)
-    inquiry = await _get_inquiry_for_vendor(db, inquiry_id, vendor)
+    inquiry = await crud_inquiry.get_inquiry(db, inquiry_id)
+    if not inquiry or str(inquiry.vendor_id) != str(vendor.id):
+        raise HTTPException(status_code=404, detail="Inquiry not found for this vendor")
     
     # Get dataset details
     dataset = await db.get(Dataset, inquiry.dataset_id)
@@ -268,7 +244,9 @@ async def respond_to_inquiry(
     For 'approve' action, final_price is required.
     """
     vendor = await _verify_vendor_access(db, current_user)
-    inquiry = await _get_inquiry_for_vendor(db, inquiry_id, vendor)
+    inquiry = await crud_inquiry.get_inquiry(db, inquiry_id)
+    if not inquiry or str(inquiry.vendor_id) != str(vendor.id):
+        raise HTTPException(status_code=404, detail="Inquiry not found for this vendor")
     
     # Build vendor_response JSON
     vendor_response = {
@@ -336,7 +314,9 @@ async def update_inquiry_status(
     - rejected: Mark as rejected
     """
     vendor = await _verify_vendor_access(db, current_user)
-    inquiry = await _get_inquiry_for_vendor(db, inquiry_id, vendor)
+    inquiry = await crud_inquiry.get_inquiry(db, inquiry_id)
+    if not inquiry or str(inquiry.vendor_id) != str(vendor.id):
+        raise HTTPException(status_code=404, detail="Inquiry not found for this vendor")
     
     allowed_statuses = ['pending_review', 'responded', 'rejected']
     if new_status not in allowed_statuses:
@@ -368,7 +348,9 @@ async def generate_inquiry_summary(
     - Recommended next steps
     """
     vendor = await _verify_vendor_access(db, current_user)
-    inquiry = await _get_inquiry_for_vendor(db, inquiry_id, vendor)
+    inquiry = await crud_inquiry.get_inquiry(db, inquiry_id)
+    if not inquiry or str(inquiry.vendor_id) != str(vendor.id):
+        raise HTTPException(status_code=404, detail="Inquiry not found for this vendor")
     
     # Get dataset info
     dataset = await db.get(Dataset, inquiry.dataset_id)
@@ -388,60 +370,19 @@ async def generate_inquiry_summary(
         "buyer_inquiry": inquiry.buyer_inquiry if inquiry.buyer_inquiry else {},
     }
     
-    # Use AI to generate summary
-    from app.utils.mcp_client import get_openai_client
-    
-    prompt = f"""You are TIDE, an AI assistant helping data vendors review buyer inquiries.
-
-Summarize this dataset inquiry for the vendor representative:
-
-DATASET INFORMATION:
-- Title: {context['dataset_title']}
-- Description: {context['dataset_description']}
-- Domain: {context['dataset_domain']}
-- Pricing Model: {context['dataset_pricing_model']}
-
-BUYER INFORMATION:
-- Organization: {context['buyer_organization']}
-- Industry: {context['buyer_industry']}
-- Use Case Focus: {context['buyer_use_case']}
-
-BUYER'S INQUIRY DETAILS:
-{json.dumps(context['buyer_inquiry'], indent=2) if context['buyer_inquiry'] else 'No specific details provided'}
-
-Please provide a clear, concise summary covering:
-1. **What the buyer wants**: Summarize their request in 1-2 sentences
-2. **Key requirements**: Any specific needs mentioned (data format, time period, volume, etc.)
-3. **Buyer context**: Relevant info about their organization/use case
-4. **Considerations**: Any points the vendor should think about
-5. **Recommended action**: Approve, reject, or request more info - with brief reasoning
-
-Keep the summary brief (under 300 words) and actionable."""
-
+    # Generate summary via service
+    from app.services.inquiry_service import generate_inquiry_summary as svc_generate_summary
     try:
-        client = get_openai_client()
-        response = await client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.5,
-            max_tokens=500
-        )
-        
-        summary = response.choices[0].message.content
-        
+        res = await svc_generate_summary(db, inquiry_id)
         return InquirySummaryResponse(
-            inquiry_id=str(inquiry_id),
-            summary=summary,
-            dataset_title=dataset.title if dataset else None,
-            status=inquiry.status,
-            buyer_requirements=inquiry.buyer_inquiry
+            inquiry_id=res["inquiry_id"],
+            summary=res["summary"],
+            dataset_title=res.get("dataset_title"),
+            status=res.get("status", inquiry.status),
+            buyer_requirements=res.get("buyer_requirements"),
         )
-        
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=f"Failed to generate summary: {str(e)}"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate summary: {str(e)}")
 
 
 # ==========================================
@@ -616,34 +557,47 @@ async def send_tide_message(
         }
     )
     
-    # 2. Get conversation history for context
+    # 2. Get conversation history and rebuild it properly
     all_messages = await crud_chat_message.list_chat_messages(
         db, conversation_id=conversation_id, limit=50
     )
     
-    history = [
-        {"role": msg.role, "content": msg.content}
-        for msg in all_messages[:-1]  # Exclude the message we just added
-    ]
+    # Use the conversation manager to rebuild history with proper tool call format
+    from app.core.conversation_manager import rebuild_conversation_history
+    history = rebuild_conversation_history(all_messages[:-1])  # Exclude the just-saved user message
     
-    # 3. Call TIDE AI processor
-    from app.utils.mcp_client import process_tide_chat
+    # Add current user message
+    messages = history + [{"role": "user", "content": message.get("content", "")}]
     
+    # 3. Process with AI engine
+    from app.core.ai_engine import get_tide_engine, get_tide_system_prompt
+
     try:
-        response_data = await process_tide_chat(
-        message=message.get("content", ""),
-        conversation_history=history,
-        vendor_id=str(vendor.id),
-        conversation_id=str(conversation_id),
-        db=db,  # <-- ADD THIS LINE
-    )
+        tide = await get_tide_engine()
+        
+        # Process conversation
+        response_data = await tide.process_conversation(
+            messages=messages,
+            system_prompt=get_tide_system_prompt(),
+            context={"vendor_id": str(vendor.id), "conversation_id": str(conversation_id)}
+        )
         
         ai_content = response_data.get("content", "I'm having trouble processing that request.")
-        tool_calls = response_data.get("tool_calls")
+        tool_calls_list = response_data.get("tool_calls")
+        
+        # Convert tool_calls format for database
+        tool_call_payload = None
+        if tool_calls_list:
+            tool_call_payload = {
+                "calls": tool_calls_list  # Already in correct format
+            }
         
     except Exception as e:
-        ai_content = f"I'm having trouble connecting to my AI systems. Please try again. Error: {str(e)}"
-        tool_calls = None
+        print(f"❌ TIDE error: {e}")
+        import traceback
+        traceback.print_exc()
+        ai_content = f"I'm having trouble connecting to my AI systems. Please try again."
+        tool_call_payload = None
     
     # 4. Save AI response
     ai_message = await crud_chat_message.create_chat_message(
@@ -652,7 +606,7 @@ async def send_tide_message(
             "conversation_id": conversation_id,
             "role": "assistant",
             "content": ai_content,
-            "tool_call": tool_calls,
+            "tool_call": tool_call_payload,
         }
     )
     
@@ -663,85 +617,11 @@ async def send_tide_message(
 
 
 # ==========================================
-# DATASET ENDPOINTS (Vendor's Own Datasets)
-# ==========================================
-
-@router.get("/datasets", response_model=List[Dict[str, Any]])
-async def list_vendor_datasets(
-    limit: int = 50,
-    offset: int = 0,
-    current_user: UserRead = Depends(get_current_user),
-    db: AsyncSession = Depends(get_session),
-):
-    """
-    List all datasets owned by the current vendor.
-    Useful for TIDE to reference when discussing inquiries.
-    """
-    vendor = await _verify_vendor_access(db, current_user)
-    
-    result = await db.execute(
-        select(Dataset)
-        .where(Dataset.vendor_id == str(vendor.id))
-        .limit(limit)
-        .offset(offset)
-    )
-    datasets = result.scalars().all()
-    
-    return [
-        {
-            "id": str(d.id),
-            "title": d.title,
-            "description": d.description,
-            "domain": d.domain,
-            "pricing_model": d.pricing_model,
-            "license": d.license,
-            "status": d.status,
-        }
-        for d in datasets
-    ]
-
-
-@router.get("/datasets/{dataset_id}", response_model=Dict[str, Any])
-async def get_vendor_dataset(
-    dataset_id: UUID,
-    current_user: UserRead = Depends(get_current_user),
-    db: AsyncSession = Depends(get_session),
-):
-    """
-    Get detailed information about a vendor's dataset.
-    """
-    vendor = await _verify_vendor_access(db, current_user)
-    
-    dataset = await db.get(Dataset, dataset_id)
-    if not dataset:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="Dataset not found"
-        )
-    
-    if str(dataset.vendor_id) != str(vendor.id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Not authorized to access this dataset"
-        )
-    
-    return {
-        "id": str(dataset.id),
-        "title": dataset.title,
-        "description": dataset.description,
-        "domain": dataset.domain,
-        "dataset_type": dataset.dataset_type,
-        "granularity": dataset.granularity,
-        "pricing_model": dataset.pricing_model,
-        "license": dataset.license,
-        "topics": dataset.topics,
-        "entities": dataset.entities,
-        "temporal_coverage": dataset.temporal_coverage,
-        "geographic_coverage": dataset.geographic_coverage,
-        "status": dataset.status,
-        "visibility": dataset.visibility,
-    }
-    
+### NOTE: Dataset-related endpoints removed.
+# Vendors should use global /datasets endpoints:
+#   GET /api/v1/datasets/me/        (their own datasets)
+#   GET /api/v1/datasets/{id}       (detail with RBAC)
+# This keeps dataset logic centralized.
 @router.post("/notify/{inquiry_id}")
 async def trigger_inquiry_notification(
     inquiry_id: UUID,
@@ -760,8 +640,8 @@ async def trigger_inquiry_notification(
     dataset = await db.get(Dataset, inquiry.dataset_id)
     buyer = await db.get(Buyer, inquiry.buyer_id)
     
-    from app.utils.mcp_client import notify_vendor_of_new_inquiry
-    
+    from app.services.inquiry_service import notify_vendor_of_new_inquiry
+
     result = await notify_vendor_of_new_inquiry(
         db=db,
         vendor_id=str(inquiry.vendor_id),

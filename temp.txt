@@ -1,0 +1,1418 @@
+vendor dashboard css
+
+/* Global Resets & Colors */
+:root {
+  --primary-900: #03045E;
+  --primary-800: #023E8A;
+  --primary-700: #0077B6;
+  --primary-600: #0096C7;
+  --primary-500: #00B4D8;
+  --accent-300: #48CAE4;
+  --accent-200: #90E0EF;
+  --accent-100: #ADE8F4;
+  --accent-50:  #CAF0F8;
+  --text-dark: var(--primary-900);
+  --text-medium: var(--primary-700);
+  --text-light: #ffffff;
+  --bg-light: #fdfdff;
+  --bg-page: var(--accent-50);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  background: var(--bg-page);
+  color: var(--text-dark);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Layout */
+.vendor-dashboard-layout {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg-page);
+  overflow: hidden;
+}
+
+/* Sidebar Styles */
+.vendor-sidebar {
+  width: 280px;
+  background: linear-gradient(160deg, var(--primary-900) 0%, var(--primary-800) 100%);
+  padding: 24px 0;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  height: 100vh;
+  left: 0;
+  top: 0;
+  z-index: 1000;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-header {
+  padding: 0 24px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 24px;
+  transition: padding 0.3s ease;
+  position: relative;
+}
+
+.sidebar-toggle {
+  position: absolute;
+  top: 8px;
+  right: -10px;
+  width: 24px;
+  height: 24px;
+  background: var(--bg-light);
+  color: var(--primary-800);
+  border-radius: 50%;
+  border: 1px solid var(--accent-100);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.8) translateX(10px);
+  transition: all 0.2s ease-in-out;
+  z-index: 1001;
+}
+
+.vendor-sidebar:hover .sidebar-toggle {
+  opacity: 1;
+  transform: scale(1) translateX(0);
+  right: -12px;
+}
+
+.sidebar-toggle svg {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.3s ease;
+}
+
+.puddle-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.puddle-logo svg {
+  width: 32px;
+  height: 32px;
+  stroke: var(--accent-200);
+  flex-shrink: 0;
+}
+
+.puddle-logo h2 {
+  color: white;
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+  white-space: nowrap;
+  opacity: 1;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 0.2s ease;
+}
+
+.user-name {
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.user-role {
+  color: var(--accent-200);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sidebar-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 16px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: padding 0.3s ease;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: none;
+  border: none;
+  color: var(--accent-100);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  font-weight: 500;
+  width: 100%;
+  text-align: left;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  transform: translateX(4px);
+}
+
+.nav-item.active {
+  background: var(--bg-light);
+  color: var(--primary-800);
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.nav-item svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.nav-item span {
+  white-space: nowrap;
+  opacity: 1;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.sidebar-footer {
+  padding: 24px 16px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  transition: padding 0.3s ease;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: var(--accent-100);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.logout-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.logout-btn span {
+  white-space: nowrap;
+  opacity: 1;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* Sidebar Minimized Styles */
+.vendor-sidebar.minimized {
+  width: 90px;
+}
+
+.vendor-sidebar.minimized .sidebar-header {
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0 24px 0;
+}
+
+.vendor-sidebar.minimized .puddle-logo {
+  justify-content: center;
+  margin-bottom: 20px;
+  padding-top: 4px;
+}
+
+.vendor-sidebar.minimized .puddle-logo h2,
+.vendor-sidebar.minimized .user-info {
+  opacity: 0;
+  transform: translateX(-20px);
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.vendor-sidebar.minimized .sidebar-toggle svg {
+  transform: rotate(180deg);
+}
+
+.vendor-sidebar.minimized .sidebar-nav {
+  padding: 0 12px;
+}
+
+.vendor-sidebar.minimized .nav-item {
+  justify-content: center;
+  padding: 14px 12px;
+}
+
+.vendor-sidebar.minimized .nav-item:hover {
+  transform: translateX(0);
+}
+
+.vendor-sidebar.minimized .nav-item span {
+  opacity: 0;
+  transform: translateX(-20px);
+  display: none;
+}
+
+.vendor-sidebar.minimized .sidebar-footer {
+  padding: 24px 12px 0;
+}
+
+.vendor-sidebar.minimized .logout-btn {
+  justify-content: center;
+  padding: 12px;
+}
+
+.vendor-sidebar.minimized .logout-btn span {
+  opacity: 0;
+  transform: translateX(-20px);
+  display: none;
+}
+
+/* Main Content Styles */
+.vendor-main {
+  flex: 1;
+  margin-left: 280px;
+  padding: 40px;
+  background: var(--bg-page);
+  overflow-y: auto;
+  max-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.vendor-main.sidebar-minimized {
+  margin-left: 90px;
+}
+
+.main-header {
+  margin-bottom: 24px;
+  flex-shrink: 0;
+}
+
+.main-header h1 {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--primary-900);
+  margin: 0 0 8px 0;
+}
+
+.main-header p {
+  color: var(--primary-700);
+  font-size: 16px;
+  margin: 0;
+}
+
+.main-content {
+  background: var(--bg-light);
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: 0 10px 40px rgba(3, 4, 94, 0.08);
+  border: 1px solid rgba(202, 240, 248, 0.5);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Premium Form Styles - OPTIMIZED SPACING */
+.form-group {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
+}
+
+.form-label {
+  display: block !important;
+  margin-bottom: 6px !important;
+  color: var(--primary-900) !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  line-height: 1.4;
+  position: static !important; /* CRITICAL: Remove any positioning */
+  z-index: 100 !important; /* CRITICAL: High z-index */
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+  width: auto !important;
+  height: auto !important;
+  order: 1;
+}
+
+.required {
+  color: #dc2626;
+}
+
+/* Remove any problematic wrapper styles */
+.input-wrapper {
+  position: relative;
+  z-index: 1; /* Lower than labels */
+  order: 2;
+}
+
+.input-group {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  z-index: 1; /* Lower than labels */
+}
+
+.input-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--primary-700);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.input-icon.textarea-icon {
+  top: 16px;
+  transform: translateY(0);
+}
+
+/* Ensure form inputs don't overlap labels */
+.form-input {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--accent-50);
+  border: 1.6px solid var(--accent-100);
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--primary-900);
+  outline: none;
+  transition: all 0.2s ease;
+  padding-left: 44px;
+  position: relative;
+  z-index: 1; /* Lower than labels */
+  margin-top: 0; /* Ensure no margin pushing labels away */
+}
+
+
+.form-input:focus {
+  background: var(--bg-light);
+  border-color: var(--primary-600);
+  box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.2);
+}
+
+.form-input::placeholder {
+  color: var(--primary-600);
+  opacity: 0.7;
+  font-weight: 400;
+}
+
+textarea.form-input {
+  resize: vertical;
+  min-height: 100px;
+  font-family: inherit;
+  line-height: 1.5;
+  padding-top: 12px;
+}
+
+/* Button Styles */
+.btn {
+  padding: 12px 24px;
+  border-radius: 10px;
+  border: none;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-primary {
+  background: var(--primary-700);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: var(--primary-800);
+  transform: translateY(-2px);
+}
+
+.btn-primary:disabled {
+  background: var(--primary-600);
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Alert Styles */
+.alert {
+  padding: 14px 18px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.alert-success {
+  background: var(--accent-100);
+  color: var(--primary-800);
+  border: 1px solid var(--accent-200);
+}
+
+.alert-error {
+  background: #ffe1e1;
+  color: #b00020;
+  border: 1px solid #ffcdd2;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(3, 4, 94, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-content {
+  background: var(--bg-light);
+  border-radius: 16px;
+  padding: 28px;
+  max-width: 480px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(3, 4, 94, 0.3);
+  border: 1px solid var(--accent-100);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-header {
+  margin-bottom: 18px;
+}
+
+.modal-header h3 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--primary-900);
+  margin: 0 0 6px 0;
+}
+
+.modal-header p {
+  font-size: 15px;
+  color: var(--primary-700);
+  margin: 0;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.btn-secondary {
+  background: var(--accent-100);
+  color: var(--primary-800);
+}
+
+.btn-secondary:hover {
+  background: var(--accent-200);
+  transform: translateY(-2px);
+}
+
+.btn-danger {
+  background: #6b7280;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #4b5563;
+  transform: translateY(-2px);
+}
+
+.btn-danger:disabled {
+  background: #9ca3af;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Success Message Toast */
+.success-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: var(--primary-800);
+  color: white;
+  padding: 14px 20px;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(3, 4, 94, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 2001;
+  animation: slideInRight 0.3s ease, fadeOut 0.3s ease 2.7s;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.success-toast-icon {
+  width: 22px;
+  height: 22px;
+  background: var(--accent-200);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-900);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.success-toast-message {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Vendor Profile Styles - OPTIMIZED SPACING */
+.vendor-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  flex: 1;
+}
+
+.form-section {
+  background: var(--bg-light);
+  border-radius: 14px;
+  padding: 20px;
+  border: 1px solid rgba(202, 240, 248, 0.5);
+  flex-shrink: 0;
+}
+
+.form-section h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary-900);
+  margin: 0 0 20px 0;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--accent-100);
+}
+
+/* Specific fix for the grid layout */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  align-items: start;
+  position: relative;
+}
+
+.form-group.full {
+  grid-column: 1 / -1;
+}
+
+/* Make sure labels are always above in the stacking context */
+.form-group > .form-label {
+  order: 1;
+  position: relative;
+  z-index: 100;
+}
+
+.form-group > .input-wrapper {
+  order: 2;
+  position: relative;
+  z-index: 1;
+}
+
+/* Loading State */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 50px 20px;
+  text-align: center;
+  flex: 1;
+}
+
+.loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--accent-100);
+  border-top: 3px solid var(--primary-600);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 14px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-state p {
+  color: var(--primary-700);
+  font-size: 15px;
+  margin: 0;
+}
+
+/* Utility Styles */
+.alerts-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.page-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--primary-700);
+  font-size: 16px;
+  background: var(--bg-light);
+  border-radius: 14px;
+  border: 2px dashed var(--accent-200);
+  flex: 1;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--accent-100);
+  flex-shrink: 0;
+}
+
+.vendor-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 24px;
+}
+
+/* Critical: Remove any transforms, clips, or hidden properties */
+.vendor-profile .form-label,
+.vendor-form .form-label,
+.form-section .form-label,
+.form-grid .form-label,
+.form-group .form-label {
+  position: static !important;
+  transform: none !important;
+  clip: auto !important;
+  width: auto !important;
+  height: auto !important;
+  overflow: visible !important;
+  display: block !important;
+}
+
+/* Ensure no parent containers are clipping the labels */
+.vendor-profile,
+.vendor-form,
+.form-section,
+.form-grid,
+.form-group {
+  overflow: visible !important;
+  position: relative;
+}
+
+vendor dashboard jsx
+
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import VendorProfile from '../components/VendorProfile';
+import Marketplace from '../components/Marketplace';
+import DataCatalogTab from '../components/DataCatalog';
+import AgentManager from '../components/AgentManager';
+import {
+  ProfileIcon,
+  MarketplaceIcon,
+  DataCatalogIcon,
+  AgentIcon,
+  PuddleLogoIcon,
+  LogoutIcon,
+  SidebarToggleIcon
+} from '../components/icons';
+import './VendorDashboard.css';
+import '../components/DataCatalog.css';
+
+export default function VendorDashboard() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState('profile');
+  const [isMinimized, setIsMinimized] = useState(false);
+
+  useEffect(() => {
+    // This logic is fine, it will set the tab based on the URL
+    const path = location.pathname;
+    if (path.includes('marketplace')) setActiveTab('marketplace');
+    else if (path.includes('data-catalog')) setActiveTab('data-catalog');
+    else if (path.includes('agents')) setActiveTab('agents');
+    else setActiveTab('profile');
+  }, [location]);
+
+  const navigationItems = [
+    { id: 'profile', label: 'Profile', desc:'Manage your vendor presence on Puddle', icon: ProfileIcon },
+    { id: 'marketplace', label: 'Marketplace', desc:'Search Datasets and Vendors', icon: MarketplaceIcon },
+    { id: 'data-catalog', label: 'Data Catalog', desc:'Manage your datasets and columns', icon: DataCatalogIcon }, // <-- UPDATED DESCRIPTION
+    { id: 'agents', label: 'AI Agents', desc:'Configure your AI agents', icon: AgentIcon },
+  ];
+
+  // This function can be simplified if you don't use routing for tabs
+  const handleNavigation = (item) => {
+    setActiveTab(item.id);
+    // You can choose to navigate or not.
+    // navigate(item.path); // Uncomment if you want URL-based navigation
+  };
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'profile':
+        return <VendorProfile />;
+      case 'marketplace':
+        return <Marketplace />;
+      case 'data-catalog':
+        return <DataCatalogTab />;
+      case 'agents':
+        return <AgentManager />;
+      default:
+        return <VendorProfile />;
+    }
+  };
+
+  return (
+    <div className={`vendor-dashboard-layout ${isMinimized ? 'sidebar-minimized' : ''}`}>
+      {/* Sidebar Navigation */}
+      <nav className={`vendor-sidebar ${isMinimized ? 'minimized' : ''}`}>
+        <div className="sidebar-header">
+          <div className="puddle-logo">
+            <PuddleLogoIcon />
+            <h2>Puddle</h2>
+          </div>
+          
+          <button 
+            className="sidebar-toggle" 
+            onClick={() => setIsMinimized(!isMinimized)}
+            title={isMinimized ? 'Expand Sidebar' : 'Collapse Sidebar'}
+          >
+            <SidebarToggleIcon />
+          </button>
+          
+          <div className="user-info">
+            <span className="user-name">{user?.email}</span>
+            <span className="user-role">Vendor</span>
+          </div>
+        </div>
+
+        <div className="sidebar-nav">
+          {navigationItems.map((item) => {
+            const IconComponent = item.icon;
+            return (
+              <button
+                key={item.id}
+                title={isMinimized ? item.label : ''}
+                className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
+                onClick={() => handleNavigation(item)}
+              >
+                <IconComponent />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="sidebar-footer">
+          <button 
+            className="logout-btn" 
+            onClick={logout}
+            title={isMinimized ? 'Sign Out' : ''}
+          >
+            <LogoutIcon />
+            <span>Sign Out</span>
+          </button>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className={`vendor-main ${isMinimized ? 'sidebar-minimized' : ''}`}>
+        <div className="main-header">
+          <h1>
+            {navigationItems.find(item => item.id === activeTab)?.label || 'Vendor Dashboard'}
+          </h1>
+          <p>{navigationItems.find(item => item.id === activeTab)?.desc || 'Manage your Puddle account'}</p>
+        </div>
+        
+        <div className="main-content">
+          {renderContent()}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+
+buyer dashboard css
+
+/* Global Resets & Colors - Shared with VendorDashboard */
+:root {
+  --primary-900: #03045E;
+  --primary-800: #023E8A;
+  --primary-700: #0077B6;
+  --primary-600: #0096C7;
+  --primary-500: #00B4D8;
+  --accent-300: #48CAE4;
+  --accent-200: #90E0EF;
+  --accent-100: #ADE8F4;
+  --accent-50:  #CAF0F8;
+  --text-dark: var(--primary-900);
+  --text-medium: var(--primary-700);
+  --text-light: #ffffff;
+  --bg-light: #fdfdff;
+  --bg-page: var(--accent-50);
+}
+
+/* Layout */
+.buyer-dashboard-layout {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg-page);
+  overflow: hidden;
+}
+
+/* Sidebar Styles */
+.buyer-sidebar {
+  width: 280px;
+  background: linear-gradient(160deg, var(--primary-900) 0%, var(--primary-800) 100%);
+  padding: 24px 0;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  height: 100vh;
+  left: 0;
+  top: 0;
+  z-index: 1000;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-header {
+  padding: 0 24px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 24px;
+  transition: padding 0.3s ease;
+  position: relative;
+}
+
+.sidebar-toggle {
+  position: absolute;
+  top: 8px;
+  right: -10px;
+  width: 24px;
+  height: 24px;
+  background: var(--bg-light);
+  color: var(--primary-800);
+  border-radius: 50%;
+  border: 1px solid var(--accent-100);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.8) translateX(10px);
+  transition: all 0.2s ease-in-out;
+  z-index: 1001;
+}
+
+.buyer-sidebar:hover .sidebar-toggle {
+  opacity: 1;
+  transform: scale(1) translateX(0);
+  right: -12px;
+}
+
+.sidebar-toggle svg {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.3s ease;
+}
+
+.puddle-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.puddle-logo svg {
+  width: 32px;
+  height: 32px;
+  stroke: var(--accent-200);
+  flex-shrink: 0;
+}
+
+.puddle-logo h2 {
+  color: white;
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+  white-space: nowrap;
+  opacity: 1;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 0.2s ease;
+}
+
+.user-name {
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.user-role {
+  color: var(--accent-200);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sidebar-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 16px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: padding 0.3s ease;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: none;
+  border: none;
+  color: var(--accent-100);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  font-weight: 500;
+  width: 100%;
+  text-align: left;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  transform: translateX(4px);
+}
+
+.nav-item.active {
+  background: var(--bg-light);
+  color: var(--primary-800);
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.nav-item svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.nav-item span {
+  white-space: nowrap;
+  opacity: 1;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.sidebar-footer {
+  padding: 24px 16px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  transition: padding 0.3s ease;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  margin: 0 16px;
+  width: calc(100% - 32px);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: var(--accent-100);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.logout-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.logout-btn svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.logout-btn span {
+  white-space: nowrap;
+  opacity: 1;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* Sidebar Minimized Styles */
+.buyer-sidebar.minimized {
+  width: 90px;
+}
+
+.buyer-sidebar.minimized .sidebar-header {
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0 24px 0;
+}
+
+.buyer-sidebar.minimized .puddle-logo {
+  justify-content: center;
+  margin-bottom: 20px;
+  padding-top: 4px;
+}
+
+.buyer-sidebar.minimized .puddle-logo h2,
+.buyer-sidebar.minimized .user-info {
+  opacity: 0;
+  transform: translateX(-20px);
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.buyer-sidebar.minimized .sidebar-toggle svg {
+  transform: rotate(180deg);
+}
+
+.buyer-sidebar.minimized .sidebar-nav {
+  padding: 0 12px;
+}
+
+.buyer-sidebar.minimized .nav-item {
+  justify-content: center;
+  padding: 14px 12px;
+}
+
+.buyer-sidebar.minimized .nav-item:hover {
+  transform: translateX(0);
+}
+
+.buyer-sidebar.minimized .nav-item span {
+  opacity: 0;
+  transform: translateX(-20px);
+  display: none;
+}
+
+.buyer-sidebar.minimized .logout-btn {
+  justify-content: center;
+  padding: 12px;
+  margin: 0 12px;
+  width: calc(100% - 24px);
+}
+
+.buyer-sidebar.minimized .logout-btn span {
+  opacity: 0;
+  transform: translateX(-20px);
+  display: none;
+}
+
+/* Main Content Styles */
+.buyer-main {
+  flex: 1;
+  margin-left: 280px;
+  padding: 40px;
+  background: var(--bg-page);
+  overflow-y: auto;
+  max-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.buyer-main.sidebar-minimized {
+  margin-left: 90px;
+}
+
+.main-header {
+  margin-bottom: 24px;
+  flex-shrink: 0;
+}
+
+.main-header h1 {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--primary-900);
+  margin: 0 0 8px 0;
+}
+
+.main-header p {
+  color: var(--primary-700);
+  font-size: 16px;
+  margin: 0;
+}
+
+.main-content {
+  background: var(--bg-light);
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: 0 10px 40px rgba(3, 4, 94, 0.08);
+  border: 1px solid rgba(202, 240, 248, 0.5);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Loading State */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 50px 20px;
+  text-align: center;
+  flex: 1;
+}
+
+.loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--accent-100);
+  border-top: 3px solid var(--primary-600);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 14px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-state p {
+  color: var(--primary-700);
+  font-size: 15px;
+  margin: 0;
+}
+
+buyer dashboard jsx
+
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import BuyerProfile from '../components/BuyerProfile';
+import Marketplace from '../components/Marketplace';
+import {
+  ProfileIcon,
+  MarketplaceIcon,
+  PuddleLogoIcon,
+  LogoutIcon,
+  SidebarToggleIcon
+} from '../components/icons';
+import './BuyerDashboard.css';
+import './VendorDashboard.css'; // Import shared form styles
+
+export default function BuyerDashboard() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState('profile');
+  const [isMinimized, setIsMinimized] = useState(false);
+
+  useEffect(() => {
+    const path = location.pathname;
+    if (path.includes('marketplace')) setActiveTab('marketplace');
+    else setActiveTab('profile');
+  }, [location]);
+
+  const navigationItems = [
+    { id: 'profile', label: 'Profile', desc: 'Manage your buyer profile', icon: ProfileIcon },
+    { id: 'marketplace', label: 'Marketplace', desc: 'Search Datasets and Vendors', icon: MarketplaceIcon },
+  ];
+
+  const handleNavigation = (item) => {
+    setActiveTab(item.id);
+  };
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'profile':
+        return <BuyerProfile />;
+      case 'marketplace':
+        return <Marketplace />;
+      default:
+        return <BuyerProfile />;
+    }
+  };
+
+  return (
+    <div className={`buyer-dashboard-layout ${isMinimized ? 'sidebar-minimized' : ''}`}>
+      {/* Sidebar Navigation */}
+      <nav className={`buyer-sidebar ${isMinimized ? 'minimized' : ''}`}>
+        <div className="sidebar-header">
+          <div className="puddle-logo">
+            <PuddleLogoIcon />
+            <h2>Puddle</h2>
+          </div>
+          
+          <button 
+            className="sidebar-toggle" 
+            onClick={() => setIsMinimized(!isMinimized)}
+            title={isMinimized ? 'Expand Sidebar' : 'Collapse Sidebar'}
+          >
+            <SidebarToggleIcon />
+          </button>
+          
+          <div className="user-info">
+            <span className="user-name">{user?.email}</span>
+            <span className="user-role">Buyer</span>
+          </div>
+        </div>
+
+        <div className="sidebar-nav">
+          {navigationItems.map((item) => {
+            const IconComponent = item.icon;
+            return (
+              <button
+                key={item.id}
+                title={isMinimized ? item.label : ''}
+                className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
+                onClick={() => handleNavigation(item)}
+              >
+                <IconComponent />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="sidebar-footer">
+          <button 
+            className="logout-btn" 
+            onClick={logout}
+            title={isMinimized ? 'Sign Out' : ''}
+          >
+            <LogoutIcon />
+            <span>Sign Out</span>
+          </button>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className={`buyer-main ${isMinimized ? 'sidebar-minimized' : ''}`}>
+        <div className="main-header">
+          <h1>
+            {navigationItems.find(item => item.id === activeTab)?.label || 'Buyer Dashboard'}
+          </h1>
+          <p>{navigationItems.find(item => item.id === activeTab)?.desc || 'Manage your Puddle account'}</p>
+        </div>
+        
+        <div className="main-content">
+          {renderContent()}
+        </div>
+      </main>
+    </div>
+  );
+}
+

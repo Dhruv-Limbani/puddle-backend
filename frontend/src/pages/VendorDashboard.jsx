@@ -5,11 +5,13 @@ import VendorProfile from '../components/VendorProfile';
 import Marketplace from '../components/Marketplace';
 import DataCatalogTab from '../components/DataCatalog';
 import AgentManager from '../components/AgentManager';
+import TideInquiries from '../components/TideInquiries';
 import {
   ProfileIcon,
   MarketplaceIcon,
   DataCatalogIcon,
   AgentIcon,
+  InquiryIcon,
   PuddleLogoIcon,
   LogoutIcon,
   SidebarToggleIcon
@@ -36,7 +38,8 @@ export default function VendorDashboard() {
   const navigationItems = [
     { id: 'profile', label: 'Profile', desc:'Manage your vendor presence on Puddle', icon: ProfileIcon },
     { id: 'marketplace', label: 'Marketplace', desc:'Search Datasets and Vendors', icon: MarketplaceIcon },
-    { id: 'data-catalog', label: 'Data Catalog', desc:'Manage your datasets and columns', icon: DataCatalogIcon }, // <-- UPDATED DESCRIPTION
+    { id: 'data-catalog', label: 'Data Catalog', desc:'Manage your datasets and columns', icon: DataCatalogIcon },
+    { id: 'inquiries', label: 'Inquiries', desc:'Manage buyer inquiries with TIDE', icon: InquiryIcon },
     { id: 'agents', label: 'AI Agents', desc:'Configure your AI agents', icon: AgentIcon },
   ];
 
@@ -55,6 +58,8 @@ export default function VendorDashboard() {
         return <Marketplace />;
       case 'data-catalog':
         return <DataCatalogTab />;
+      case 'inquiries':
+        return <TideInquiries />;
       case 'agents':
         return <AgentManager />;
       default:

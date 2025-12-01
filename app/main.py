@@ -17,6 +17,17 @@ async def lifespan(app: FastAPI):
     # Create tables if they don't exist (useful for local dev)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    
+    # Initialize AI engines (ACID and TIDE)
+    from app.core.ai_engine import get_acid_engine, get_tide_engine
+    try:
+        await get_acid_engine()
+        await get_tide_engine()
+        print("✅ AI engines initialized successfully")
+    except Exception as e:
+        print(f"⚠️  Warning: Could not initialize AI engines: {e}")
+        print("   ACID and TIDE will retry connection on first use")
+    
     yield
 
 

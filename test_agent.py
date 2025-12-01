@@ -17,6 +17,7 @@ Requirements:
 import httpx
 import asyncio
 import json
+import os
 from typing import Optional
 
 # ==========================================
@@ -26,11 +27,11 @@ from typing import Optional
 BASE_URL = "http://localhost:8000/api/v1"
 
 # Update these with your test credentials
-BUYER_EMAIL = "testbuyer@test.com"
-BUYER_PASSWORD = "testpass123"
+BUYER_EMAIL = "buyer1@research.edu"
+BUYER_PASSWORD = "password123"
 
 VENDOR_EMAIL = "vendor1@datamart.com"
-VENDOR_PASSWORD = "testpass123"
+VENDOR_PASSWORD = "password123"
 
 # ==========================================
 # GLOBAL STATE
@@ -396,6 +397,10 @@ async def run_demo_flow(client: httpx.AsyncClient):
     print("🎬 RUNNING DEMO FLOW")
     print("="*60)
     
+    # Initialize dataset_id/vendor_id to avoid UnboundLocalError when no datasets found
+    dataset_id = None
+    vendor_id = None
+
     # Step 1: ACID searches for datasets
     print("\n--- Step 1: Buyer searches for datasets ---")
     await chat_with_acid(client, "I'm looking for financial market data for risk analysis")
@@ -492,43 +497,54 @@ async def run_demo_flow(client: httpx.AsyncClient):
 
 
 async def main():
-    """Main function"""
-    
+    """Main entrypoint supporting non-interactive CI/dev runs via env var.
+
+    Set NON_INTERACTIVE=1 to automatically:
+      - test routes
+      - login users
+      - create conversations
+      - run the demo flow
+    Skips all input() prompts so script can be used in automated diagnostics.
+    """
+
+    non_interactive = os.getenv("NON_INTERACTIVE", "0") == "1"
+
     print("\n" + "="*60)
     print("🧪 ACID & TIDE INTERACTIVE TESTER")
     print("="*60)
-    
+
     async with httpx.AsyncClient(timeout=120.0) as client:
-        
-        # Test routes
         routes_ok = await test_routes(client)
         if not routes_ok:
             print("\n❌ Routes check failed. Is your server running?")
             return
-        
-        input("\nPress Enter to continue with login...")
-        
-        # Login
+
+        if not non_interactive:
+            input("\nPress Enter to continue with login...")
+
         login_ok = await login_users(client)
         if not login_ok:
             print("\n❌ Login failed. Check credentials and run seed_test_data.py first.")
             return
-        
-        # Setup conversations
+
         conv_ok = await setup_conversations(client)
         if not conv_ok:
             print("\n⚠️ Could not create conversations, but continuing...")
-        
-        # Menu
+
+        if non_interactive:
+            print("\n🚀 NON_INTERACTIVE mode: running demo flow automatically")
+            await run_demo_flow(client)
+            return
+
         print("\n" + "="*60)
         print("What would you like to do?")
         print("="*60)
         print("  1. Run demo flow (automated)")
         print("  2. Interactive mode (manual)")
         print("  3. Exit")
-        
+
         choice = input("\nSelect (1/2/3): ").strip()
-        
+
         if choice == "1":
             await run_demo_flow(client)
         elif choice == "2":

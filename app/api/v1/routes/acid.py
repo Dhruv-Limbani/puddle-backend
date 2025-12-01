@@ -19,9 +19,9 @@ from app.core.auth import get_current_user
 from app.schemas.user import UserRead
 from app.schemas.conversation import ConversationCreate, ConversationRead, ConversationUpdate
 from app.schemas.chat_message import ChatMessageCreate, ChatMessageRead
-from app.schemas.inquiry import InquiryCreate, InquiryRead, InquiryUpdate
+from app.schemas.inquiry import InquiryCreate, InquiryRead, InquiryUpdate, InquiryReadEnriched
 from app.crud import crud_conversation, crud_chat_message, crud_inquiry
-from app.models.models import Buyer, Inquiry
+from app.models.models import Buyer, Inquiry, Dataset, Vendor
 
 router = APIRouter(prefix="/acid", tags=["acid"])
 
@@ -118,6 +118,27 @@ async def update_conversation(
     updated = await crud_conversation.update_conversation(db, conversation_id, update_data)
     return updated
 
+@router.delete("/conversations/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_conversation(
+    conversation_id: UUID,
+    current_user: UserRead = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """
+    Delete a conversation owned by the current user.
+    """
+    conversation = await crud_conversation.get_conversation(db, conversation_id)
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    if str(conversation.user_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Not authorized to delete this conversation")
+
+    deleted = await crud_conversation.delete_conversation(db, conversation_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return None
+
 
 # ==========================================
 # CHAT MESSAGE ENDPOINTS
@@ -160,9 +181,10 @@ async def send_message(
     
     This endpoint:
     1. Saves the user's message
-    2. Calls the MCP server to process the message
-    3. Saves the AI response
-    4. Returns the AI response
+    2. Reconstructs conversation history properly
+    3. Calls the AI engine to process the message
+    4. Saves the AI response
+    5. Returns both messages
     """
     # Verify conversation exists and user owns it
     conversation = await crud_conversation.get_conversation(db, conversation_id)
@@ -187,46 +209,53 @@ async def send_message(
         }
     )
     
-    # 2. Get conversation history for context
-    all_messages = await crud_chat_message.list_chat_messages(
-        db, conversation_id=conversation_id, limit=50
-    )
+    # 2. Get conversation history and rebuild it properly
+    all_messages = await crud_chat_message.list_chat_messages(db, conversation_id=conversation_id, limit=50)
     
-    # Format history for MCP
-    history = [
-        {"role": msg.role, "content": msg.content}
-        for msg in all_messages[:-1]  # Exclude the message we just added
-    ]
+    # Use the conversation manager to rebuild history with proper tool call format
+    from app.core.conversation_manager import rebuild_conversation_history
+    history = rebuild_conversation_history(all_messages[:-1])  # Exclude the just-saved user message
     
-    # 3. Call MCP server using our client
-    from app.utils.mcp_client import process_chat_with_ai
+    # Add current user message
+    messages = history + [{"role": "user", "content": message.get("content", "")}]
+    
+    # 3. Process with AI engine
+    from app.core.ai_engine import get_acid_engine, get_acid_system_prompt
     
     try:
-        response_data = await process_chat_with_ai(
-            message=message.get("content", ""),
-            conversation_history=history,
-            buyer_id=str(buyer.id),
-            conversation_id=str(conversation_id),
+        acid = await get_acid_engine()
+        
+        # Process conversation
+        response_data = await acid.process_conversation(
+            messages=messages,
+            system_prompt=get_acid_system_prompt(),
+            context={"buyer_id": str(buyer.id), "conversation_id": str(conversation_id)}
         )
         
         ai_content = response_data.get("content", "I'm having trouble processing that request.")
-        tool_calls = response_data.get("tool_calls")
+        tool_calls_list = response_data.get("tool_calls")
+        
+        # Convert tool_calls format for database
+        tool_call_payload = None
+        if tool_calls_list:
+            tool_call_payload = {
+                "calls": tool_calls_list  # Already in correct format: [{name, arguments, result}]
+            }
         
     except Exception as e:
-        # If MCP fails, provide a helpful error message
-        ai_content = f"I'm having trouble connecting to my AI systems. Please try again. Error: {str(e)}"
-        tool_calls = None
+        print(f"❌ ACID error: {e}")
+        import traceback
+        traceback.print_exc()
+        ai_content = f"I'm having trouble connecting to my AI systems. Please try again."
+        tool_call_payload = None
     
     # 4. Save AI response
-    ai_message = await crud_chat_message.create_chat_message(
-        db,
-        {
-            "conversation_id": conversation_id,
-            "role": "assistant",
-            "content": ai_content,
-            "tool_call": tool_calls,
-        }
-    )
+    ai_message = await crud_chat_message.create_chat_message(db, {
+        "conversation_id": conversation_id,
+        "role": "assistant",
+        "content": ai_content,
+        "tool_call": tool_call_payload,
+    })
     
     return {
         "user_message": user_message,
@@ -265,7 +294,7 @@ async def create_inquiry(
     return inquiry
 
 
-@router.get("/inquiries", response_model=List[InquiryRead])
+@router.get("/inquiries", response_model=List[InquiryReadEnriched])
 async def list_inquiries(
     limit: int = 50,
     offset: int = 0,
@@ -286,10 +315,28 @@ async def list_inquiries(
     inquiries = await crud_inquiry.list_inquiries_by_buyer(
         db, buyer_id=buyer.id, limit=limit, offset=offset
     )
-    return inquiries
+    # Enrich with dataset title and vendor name
+    enriched: List[InquiryReadEnriched] = []
+    for i in inquiries:
+        dataset_title = None
+        vendor_name = None
+        try:
+            ds = await db.get(Dataset, i.dataset_id)
+            if ds:
+                dataset_title = ds.title
+        except Exception:
+            pass
+        try:
+            v = await db.get(Vendor, i.vendor_id)
+            if v:
+                vendor_name = v.name
+        except Exception:
+            pass
+        enriched.append(InquiryReadEnriched(**i.model_dump(), dataset_title=dataset_title, vendor_name=vendor_name))
+    return enriched
 
 
-@router.get("/inquiries/{inquiry_id}", response_model=InquiryRead)
+@router.get("/inquiries/{inquiry_id}", response_model=InquiryReadEnriched)
 async def get_inquiry(
     inquiry_id: UUID,
     current_user: UserRead = Depends(get_current_user),
@@ -307,7 +354,22 @@ async def get_inquiry(
     if not buyer or str(inquiry.buyer_id) != str(buyer.id):
         raise HTTPException(status_code=403, detail="Not authorized to access this inquiry")
     
-    return inquiry
+    # Enrich with dataset title and vendor name
+    dataset_title = None
+    vendor_name = None
+    try:
+        ds = await db.get(Dataset, inquiry.dataset_id)
+        if ds:
+            dataset_title = ds.title
+    except Exception:
+        pass
+    try:
+        v = await db.get(Vendor, inquiry.vendor_id)
+        if v:
+            vendor_name = v.name
+    except Exception:
+        pass
+    return InquiryReadEnriched(**inquiry.model_dump(), dataset_title=dataset_title, vendor_name=vendor_name)
 
 
 @router.patch("/inquiries/{inquiry_id}", response_model=InquiryRead)
@@ -334,7 +396,7 @@ async def update_inquiry(
     return updated
 
 
-@router.get("/conversations/{conversation_id}/inquiries", response_model=List[InquiryRead])
+@router.get("/conversations/{conversation_id}/inquiries", response_model=List[InquiryReadEnriched])
 async def get_conversation_inquiries(
     conversation_id: UUID,
     current_user: UserRead = Depends(get_current_user),
@@ -357,5 +419,23 @@ async def get_conversation_inquiries(
         select(Inquiry).where(Inquiry.conversation_id == str(conversation_id))
     )
     inquiries = result.scalars().all()
-    
-    return [InquiryRead.model_validate(i) for i in inquiries]
+
+    enriched: List[InquiryReadEnriched] = []
+    for i in inquiries:
+        base = InquiryRead.model_validate(i)
+        dataset_title = None
+        vendor_name = None
+        try:
+            ds = await db.get(Dataset, base.dataset_id)
+            if ds:
+                dataset_title = ds.title
+        except Exception:
+            pass
+        try:
+            v = await db.get(Vendor, base.vendor_id)
+            if v:
+                vendor_name = v.name
+        except Exception:
+            pass
+        enriched.append(InquiryReadEnriched(**base.model_dump(), dataset_title=dataset_title, vendor_name=vendor_name))
+    return enriched
