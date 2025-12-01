@@ -65,9 +65,7 @@ export default function InquiryList() {
 
   const statusCounts = {
     all: inquiries.length,
-    draft: inquiries.filter(i => i.status === 'draft').length,
     submitted: inquiries.filter(i => i.status === 'submitted').length,
-    pending_review: inquiries.filter(i => i.status === 'pending_review').length,
     responded: inquiries.filter(i => i.status === 'responded').length,
     accepted: inquiries.filter(i => i.status === 'accepted').length,
     rejected: inquiries.filter(i => i.status === 'rejected').length,
@@ -85,9 +83,7 @@ export default function InquiryList() {
 
   const getStatusIcon = (status) => {
     const icons = {
-      draft: '📝',
       submitted: '✉️',
-      pending_review: '⏳',
       responded: '✅',
       accepted: '🎉',
       rejected: '❌',
@@ -122,22 +118,10 @@ export default function InquiryList() {
           All <span className="filter-count">{statusCounts.all}</span>
         </button>
         <button
-          className={`filter-btn ${statusFilter === 'draft' ? 'active' : ''}`}
-          onClick={() => setStatusFilter('draft')}
-        >
-          Draft <span className="filter-count">{statusCounts.draft}</span>
-        </button>
-        <button
           className={`filter-btn ${statusFilter === 'submitted' ? 'active' : ''}`}
           onClick={() => setStatusFilter('submitted')}
         >
           Submitted <span className="filter-count">{statusCounts.submitted}</span>
-        </button>
-        <button
-          className={`filter-btn ${statusFilter === 'pending_review' ? 'active' : ''}`}
-          onClick={() => setStatusFilter('pending_review')}
-        >
-          In Review <span className="filter-count">{statusCounts.pending_review}</span>
         </button>
         <button
           className={`filter-btn ${statusFilter === 'responded' ? 'active' : ''}`}
@@ -257,6 +241,15 @@ export default function InquiryList() {
                 </div>
               </div>
             </div>
+
+            {selectedInquiry.summary && (
+              <div className="details-section">
+                <h4>Inquiry Summary</h4>
+                <div className="summary-box">
+                  <p>{selectedInquiry.summary}</p>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

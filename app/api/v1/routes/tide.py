@@ -15,13 +15,14 @@ from sqlalchemy import select
 from uuid import UUID
 from pydantic import BaseModel
 from datetime import datetime
+import json
 
 from app.core.db import get_session
 from app.core.auth import get_current_user
 from app.schemas.user import UserRead
 from app.schemas.conversation import ConversationCreate, ConversationRead, ConversationUpdate
 from app.schemas.chat_message import ChatMessageCreate, ChatMessageRead
-from app.schemas.inquiry import InquiryCreate, InquiryRead, InquiryUpdate
+from app.schemas.inquiry import InquiryCreate, InquiryRead, InquiryUpdate, InquiryReadEnriched
 from app.crud import crud_conversation, crud_chat_message, crud_inquiry
 from app.models.models import Vendor, Inquiry, Dataset, Buyer
 
@@ -90,7 +91,7 @@ class InquirySummaryResponse(BaseModel):
 # INQUIRY ENDPOINTS (Vendor View)
 # ==========================================
 
-@router.get("/inquiries", response_model=List[InquiryRead])
+@router.get("/inquiries", response_model=List[InquiryReadEnriched])
 async def list_vendor_inquiries(
     status_filter: Optional[str] = None,
     limit: int = 50,
@@ -99,27 +100,57 @@ async def list_vendor_inquiries(
     db: AsyncSession = Depends(get_session),
 ):
     """
-    List all inquiries for the current vendor.
+    List all inquiries for the current vendor with enriched data.
     
-    Optionally filter by status:
-    - draft: Buyer is still working on inquiry
-    - submitted: Buyer submitted, awaiting vendor review
-    - pending_review: Vendor is reviewing
-    - responded: Vendor has responded with pricing
-    - accepted: Buyer accepted the offer
-    - rejected: Vendor rejected the inquiry
+    Returns inquiries with buyer_name and dataset_title resolved.
     """
     vendor = await _verify_vendor_access(db, current_user)
     
-    inquiries = await crud_inquiry.list_inquiries_by_vendor(
-        db, vendor_id=vendor.id, limit=limit, offset=offset
-    )
+    query = select(
+        Inquiry,
+        Dataset.title.label('dataset_title'),
+        Buyer.name.label('buyer_name')
+    ).join(
+        Dataset, Inquiry.dataset_id == Dataset.id
+    ).join(
+        Buyer, Inquiry.buyer_id == Buyer.id
+    ).where(
+        Inquiry.vendor_id == vendor.id
+    ).order_by(
+        Inquiry.created_at.desc()
+    ).limit(limit).offset(offset)
+    
+    result = await db.execute(query)
+    rows = result.all()
+    
+    # Build enriched response
+    enriched_inquiries = []
+    for row in rows:
+        inquiry = row[0]
+        # Create enriched inquiry with explicit field mapping
+        enriched = InquiryReadEnriched(
+            id=inquiry.id,
+            buyer_id=inquiry.buyer_id,
+            vendor_id=inquiry.vendor_id,
+            dataset_id=inquiry.dataset_id,
+            conversation_id=inquiry.conversation_id,
+            buyer_inquiry=inquiry.buyer_inquiry,
+            vendor_response=inquiry.vendor_response,
+            summary=inquiry.summary,
+            status=inquiry.status,
+            created_at=inquiry.created_at,
+            updated_at=inquiry.updated_at,
+            dataset_title=row[1],
+            buyer_name=row[2],
+            vendor_name=None  # Not needed for vendor view
+        )
+        enriched_inquiries.append(enriched)
     
     # Filter by status if provided
     if status_filter:
-        inquiries = [i for i in inquiries if i.status == status_filter]
+        enriched_inquiries = [i for i in enriched_inquiries if i.status == status_filter]
     
-    return inquiries
+    return enriched_inquiries
 
 
 @router.get("/inquiries/pending", response_model=List[InquiryRead])
@@ -129,7 +160,7 @@ async def list_pending_inquiries(
 ):
     """
     List inquiries that need vendor review.
-    These are inquiries with status 'submitted' or 'pending_review'.
+    These are inquiries with status 'submitted'.
     
     This is the primary endpoint for vendors to see what needs attention.
     """
@@ -141,8 +172,7 @@ async def list_pending_inquiries(
     )
     
     # Filter for pending ones
-    pending_statuses = ['submitted', 'pending_review']
-    pending = [i for i in all_inquiries if i.status in pending_statuses]
+    pending = [i for i in all_inquiries if i.status == 'submitted']
     
     return pending
 
@@ -163,7 +193,7 @@ async def get_inquiry_stats(
     
     stats = {
         "total": len(all_inquiries),
-        "pending": len([i for i in all_inquiries if i.status in ['submitted', 'pending_review']]),
+        "pending": len([i for i in all_inquiries if i.status == 'submitted']),
         "responded": len([i for i in all_inquiries if i.status == 'responded']),
         "accepted": len([i for i in all_inquiries if i.status == 'accepted']),
         "rejected": len([i for i in all_inquiries if i.status == 'rejected']),
@@ -280,7 +310,7 @@ async def respond_to_inquiry(
                 detail="notes field is required when requesting more information"
             )
         vendor_response["info_requested"] = response_in.notes
-        new_status = "pending_review"  # Keep in review until buyer responds
+        new_status = "submitted"  # Keep as submitted until buyer responds
         
     else:
         raise HTTPException(
@@ -309,7 +339,7 @@ async def update_inquiry_status(
     Update inquiry status manually.
     
     Allowed statuses for vendor:
-    - pending_review: Mark as under review
+    - submitted: Mark as submitted (awaiting response)
     - responded: Mark as responded (usually done via /respond endpoint)
     - rejected: Mark as rejected
     """
@@ -318,7 +348,7 @@ async def update_inquiry_status(
     if not inquiry or str(inquiry.vendor_id) != str(vendor.id):
         raise HTTPException(status_code=404, detail="Inquiry not found for this vendor")
     
-    allowed_statuses = ['pending_review', 'responded', 'rejected']
+    allowed_statuses = ['submitted', 'responded', 'rejected']
     if new_status not in allowed_statuses:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
@@ -651,3 +681,111 @@ async def trigger_inquiry_notification(
     )
     
     return result
+
+# ==========================================
+# TIDE CHAT ENDPOINT (Stateless)
+# ==========================================
+
+class TideChatMessage(BaseModel):
+    """Simple chat message for TIDE"""
+    content: str
+    inquiry_id: str
+
+
+class TideChatResponse(BaseModel):
+    """TIDE chat response"""
+    content: str
+    tool_calls: Optional[List[Dict[str, Any]]] = None
+
+
+@router.post("/chat", response_model=TideChatResponse)
+async def tide_chat(
+    message: TideChatMessage,
+    current_user: UserRead = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """
+    Simple stateless chat with TIDE for inquiry assistance.
+    
+    This endpoint:
+    1. Verifies vendor access and inquiry ownership
+    2. Gets inquiry context (buyer info, dataset info)
+    3. Sends message to TIDE AI
+    4. Returns response with any tool calls
+    
+    No conversation history is persisted - each message is independent.
+    """
+    vendor = await _verify_vendor_access(db, current_user)
+    
+    # Verify inquiry belongs to this vendor
+    inquiry_id = UUID(message.inquiry_id)
+    inquiry = await db.get(Inquiry, inquiry_id)
+    if not inquiry:
+        raise HTTPException(status_code=404, detail="Inquiry not found")
+    
+    if str(inquiry.vendor_id) != str(vendor.id):
+        raise HTTPException(status_code=403, detail="Not authorized to access this inquiry")
+    
+    # Get related data for context
+    dataset = await db.get(Dataset, inquiry.dataset_id) if inquiry.dataset_id else None
+    buyer = await db.get(Buyer, inquiry.buyer_id) if inquiry.buyer_id else None
+    
+    # Build context for TIDE
+    context = {
+        "vendor_id": str(vendor.id),
+        "inquiry_id": str(inquiry.id),
+        "inquiry_summary": inquiry.summary,
+        "inquiry_status": inquiry.status,
+        "dataset_title": dataset.title if dataset else None,
+        "dataset_description": dataset.description if dataset else None,
+        "buyer_name": buyer.name if buyer else None,
+        "buyer_organization": buyer.organization if buyer else None,
+        "buyer_industry": buyer.industry if buyer else None,
+    }
+    
+    # Build concise context message for TIDE
+    buyer_inquiry_str = json.dumps(inquiry.buyer_inquiry, indent=2) if inquiry.buyer_inquiry else 'No specific requirements listed'
+    
+    context_message = f"""[INQUIRY CONTEXT - inquiry_id: {inquiry.id}]
+Dataset: {dataset.title if dataset else 'N/A'}
+Buyer: {buyer.name if buyer else 'Unknown'} from {buyer.organization if buyer else 'N/A'}
+Status: {inquiry.status}
+
+Buyer's Requirements:
+{buyer_inquiry_str}
+
+Negotiation History:
+{inquiry.summary if inquiry.summary else 'New inquiry - no history yet.'}
+
+---
+Vendor asks: {message.content}"""
+    
+    # Process with TIDE AI engine
+    from app.core.ai_engine import get_tide_engine, get_tide_system_prompt
+    
+    try:
+        tide = await get_tide_engine()
+        
+        # Include rich context in the message
+        response_data = await tide.process_conversation(
+            messages=[{"role": "user", "content": context_message}],
+            system_prompt=get_tide_system_prompt(),
+            context=context
+        )
+        
+        ai_content = response_data.get("content", "I'm having trouble processing that request.")
+        tool_calls_list = response_data.get("tool_calls")
+        
+        return TideChatResponse(
+            content=ai_content,
+            tool_calls=tool_calls_list
+        )
+        
+    except Exception as e:
+        print(f"❌ TIDE chat error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to process chat message"
+        )

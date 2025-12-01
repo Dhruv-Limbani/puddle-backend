@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { acidService } from '../services/acidService';
 import ChatMessage from './ChatMessage';
-import { PlusIcon, SendIcon, MessageIcon } from './icons';
+import ConfirmationModal from './ConfirmationModal';
+import { PlusIcon, SendIcon, MessageIcon, BotIcon } from './icons';
 import './AcidChat.css';
+import './ChatMessage.css'; // Ensure animation styles are loaded
 
 export default function AcidChat() {
   const { token, user } = useAuth();
@@ -16,6 +18,8 @@ export default function AcidChat() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [conversationToDelete, setConversationToDelete] = useState(null);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -30,7 +34,7 @@ export default function AcidChat() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, sending]); 
 
   const loadConversations = async () => {
     setLoading(true);
@@ -44,7 +48,6 @@ export default function AcidChat() {
     } catch (err) {
         const errorMsg = typeof err === 'string' ? err : (err.message || 'Failed to load conversations');
         setError(errorMsg);
-        console.error('Error loading conversations:', err);
     } finally {
       setLoading(false);
     }
@@ -55,14 +58,12 @@ export default function AcidChat() {
       const data = await acidService.getMessages(token, conversationId);
       setMessages(data);
     } catch (err) {
-        const errorMsg = typeof err === 'string' ? err : (err.message || 'Failed to load messages');
-        setError(errorMsg);
-        console.error('Error loading messages:', err);
+        setError(typeof err === 'string' ? err : (err.message || 'Failed to load messages'));
     }
   };
 
   const createNewConversation = async () => {
-      setError(''); // Clear any previous errors
+    setError('');
     try {
       const newConv = await acidService.createConversation(token, user.id, 'New Conversation');
       setConversations([newConv, ...conversations]);
@@ -70,9 +71,7 @@ export default function AcidChat() {
       setMessages([]);
       setInputValue('');
     } catch (err) {
-      const errorMsg = typeof err === 'string' ? err : (err.message || 'Failed to create conversation');
-      setError(errorMsg);
-      console.error('Error creating conversation:', err);
+      setError(typeof err === 'string' ? err : (err.message || 'Failed to create conversation'));
     }
   };
 
@@ -96,16 +95,13 @@ export default function AcidChat() {
     setMessages(prev => [...prev, tempMsg]);
 
     try {
-      const response = await acidService.sendMessage(token, activeConversationId, userMessage);
-      // Reload messages to replace temp and include AI reply
+      await acidService.sendMessage(token, activeConversationId, userMessage);
       await loadMessages(activeConversationId);
     } catch (err) {
-      const errorMsg = typeof err === 'string' ? err : (err.message || 'Failed to send message');
-      setError(errorMsg);
-      console.error('Error sending message:', err);
-      // Rollback optimistic message
+      setError(typeof err === 'string' ? err : (err.message || 'Failed to send message'));
+      // Rollback on error
       setMessages(prev => prev.filter(m => m.id !== tempMsg.id));
-      setInputValue(userMessage); // Restore message on error
+      setInputValue(userMessage);
     } finally {
       setSending(false);
     }
@@ -118,8 +114,7 @@ export default function AcidChat() {
   const formatDate = (timestamp) => {
     const date = new Date(timestamp);
     const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
+    const diffMins = Math.floor((now - date) / 60000);
     
     if (diffMins < 1) return 'Just now';
     if (diffMins < 60) return `${diffMins}m ago`;
@@ -127,34 +122,43 @@ export default function AcidChat() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
-  if (loading) {
-    return (
-      <div className="loading-state">
-        <div className="loading-spinner"></div>
-        <p>Loading conversations...</p>
-      </div>
-    );
-  }
+  const handleDeleteConversation = async () => {
+    if (!conversationToDelete) return;
+    
+    try {
+      await acidService.deleteConversation(token, conversationToDelete.id);
+      setConversations(prev => prev.filter(c => c.id !== conversationToDelete.id));
+      if (activeConversationId === conversationToDelete.id) {
+        const remaining = conversations.filter(c => c.id !== conversationToDelete.id);
+        setActiveConversationId(remaining.length > 0 ? remaining[0].id : null);
+        setMessages([]);
+      }
+    } catch (err) {
+      setError(typeof err === 'string' ? err : (err.message || 'Failed to delete conversation'));
+    } finally {
+      setDeleteModalOpen(false);
+      setConversationToDelete(null);
+    }
+  };
 
   return (
     <div className="acid-chat-container">
-      {/* Conversations Sidebar */}
+      {/* Sidebar */}
       <div className="conversations-sidebar">
-        <div className="sidebar-header">
-          <h3>Conversations</h3>
-          <button className="btn btn-primary btn-sm" onClick={createNewConversation} title="New Conversation">
+        <div className="conv-sidebar-header">
+          <button className="btn-new-chat" onClick={createNewConversation} title="New Conversation">
             <PlusIcon />
+            <span>New Chat</span>
           </button>
         </div>
+        
+        <div className="sidebar-section-label">History</div>
+        
         <div className="conversations-list">
-          {conversations.length === 0 ? (
-            <div className="empty-conversations">
-              <MessageIcon />
-              <p>No conversations yet</p>
-              <button className="btn btn-secondary btn-sm" onClick={createNewConversation}>
-                Start Chat
-              </button>
-            </div>
+          {loading ? (
+            <div style={{padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '13px'}}>Loading...</div>
+          ) : conversations.length === 0 ? (
+            <div style={{padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '13px'}}>No history yet</div>
           ) : (
             conversations.map((conv) => (
               <div
@@ -162,67 +166,59 @@ export default function AcidChat() {
                 className={`conversation-item ${activeConversationId === conv.id ? 'active' : ''}`}
                 onClick={() => setActiveConversationId(conv.id)}
               >
-                <div className="conv-title" onDoubleClick={(e) => {
-                  e.stopPropagation();
-                  setEditingConversationId(conv.id);
-                  setEditingTitle(conv.title || '');
-                }}>
-                  {editingConversationId === conv.id ? (
-                    <input
-                      className="conv-title-input"
-                      value={editingTitle}
-                      onChange={(e) => setEditingTitle(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={async (e) => {
-                        if (e.key === 'Enter') {
-                          try {
-                            const updated = await acidService.updateConversation(token, conv.id, { title: editingTitle || 'Untitled Conversation' });
-                            setConversations(prev => prev.map(c => c.id === conv.id ? updated : c));
-                          } catch (err) {
-                            setError(typeof err === 'string' ? err : (err.message || 'Failed to rename conversation'));
-                          } finally {
+                <div className="conv-content">
+                  <div className="conv-title" onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    setEditingConversationId(conv.id);
+                    setEditingTitle(conv.title || '');
+                  }}>
+                    {editingConversationId === conv.id ? (
+                      <input
+                        className="conv-title-input"
+                        value={editingTitle}
+                        onChange={(e) => setEditingTitle(e.target.value)}
+                        onBlur={async () => {
+                          if (editingTitle.trim() && editingTitle !== conv.title) {
+                            try {
+                              await acidService.updateConversation(token, conv.id, { title: editingTitle.trim() });
+                              await loadConversations();
+                            } catch (err) {
+                              setError(typeof err === 'string' ? err : (err.message || 'Failed to update conversation'));
+                            }
+                          }
+                          setEditingConversationId(null);
+                        }}
+                        autoFocus
+                        onKeyDown={async (e) => {
+                          if (e.key === 'Enter') {
+                            if (editingTitle.trim() && editingTitle !== conv.title) {
+                              try {
+                                await acidService.updateConversation(token, conv.id, { title: editingTitle.trim() });
+                                await loadConversations();
+                              } catch (err) {
+                                setError(typeof err === 'string' ? err : (err.message || 'Failed to update conversation'));
+                              }
+                            }
+                            setEditingConversationId(null);
+                          } else if (e.key === 'Escape') {
                             setEditingConversationId(null);
                           }
-                        } else if (e.key === 'Escape') {
-                          setEditingConversationId(null);
-                        }
-                      }}
-                      onBlur={async () => {
-                        try {
-                          const updated = await acidService.updateConversation(token, conv.id, { title: editingTitle || 'Untitled Conversation' });
-                          setConversations(prev => prev.map(c => c.id === conv.id ? updated : c));
-                        } catch (err) {
-                          setError(typeof err === 'string' ? err : (err.message || 'Failed to rename conversation'));
-                        } finally {
-                          setEditingConversationId(null);
-                        }
-                      }}
-                      autoFocus
-                    />
-                  ) : (
-                    <span>{conv.title || 'Untitled Conversation'}</span>
-                  )}
+                        }}
+                      />
+                    ) : (
+                      <span>{conv.title || 'Untitled'}</span>
+                    )}
+                  </div>
+                  <div className="conv-date">{formatDate(conv.created_at)}</div>
                 </div>
-                <div className="conv-date">{formatDate(conv.created_at)}</div>
                 <button
                   className="conv-delete-btn"
-                  title="Delete conversation"
-                  onClick={async (e) => {
+                  onClick={(e) => {
                     e.stopPropagation();
-                    try {
-                      await acidService.deleteConversation(token, conv.id);
-                      setConversations(prev => prev.filter(c => c.id !== conv.id));
-                      if (activeConversationId === conv.id) {
-                        setActiveConversationId(prev => {
-                          const remaining = conversations.filter(c => c.id !== conv.id);
-                          return remaining.length ? remaining[0].id : null;
-                        });
-                        setMessages([]);
-                      }
-                    } catch (err) {
-                      setError(typeof err === 'string' ? err : (err.message || 'Failed to delete conversation'));
-                    }
+                    setConversationToDelete(conv);
+                    setDeleteModalOpen(true);
                   }}
+                  title="Delete conversation"
                 >
                   ✕
                 </button>
@@ -232,41 +228,39 @@ export default function AcidChat() {
         </div>
       </div>
 
-      {/* Chat Area */}
+      {/* Main Chat Area */}
       <div className="chat-area">
         {!activeConversationId ? (
-          <div className="chat-empty-state">
-            <MessageIcon />
-            <h3>Welcome to ACID Assistant</h3>
-            <p>Your AI-powered dataset discovery companion</p>
-            <button className="btn btn-primary" onClick={createNewConversation}>
-              Start New Conversation
-            </button>
+          <div className="chat-welcome">
+            <h4>ACID Assistant</h4>
+            <p>Select a conversation to start.</p>
+            <button className="btn btn-primary" onClick={createNewConversation}>Start New</button>
           </div>
         ) : (
           <>
             <div className="chat-messages">
               {messages.length === 0 ? (
                 <div className="chat-welcome">
-                  <h4>👋 Hi! I'm ACID, your dataset discovery assistant</h4>
-                  <p>I can help you:</p>
-                  <ul>
-                    <li>Search for datasets based on your needs</li>
-                    <li>Find vendor information and contact details</li>
-                    <li>Build and submit data inquiries</li>
-                    <li>Track your inquiry status</li>
-                  </ul>
-                  <p className="chat-hint">Try: "I need financial data for credit risk modeling"</p>
+                  <h4>👋 Hi! I'm ACID</h4>
+                  <p>I can help you find the right datasets.</p>
+                  <div className="chat-hint">Try "I need financial data for Q3 2024"</div>
                 </div>
               ) : (
-                messages.map((msg) => (
-                  <ChatMessage key={msg.id} message={msg} isUser={msg.role === 'user'} />
-                ))
+                <>
+                  <div className="date-separator"><span>Today</span></div>
+                  {messages.map((msg) => (
+                    <ChatMessage key={msg.id} message={msg} isUser={msg.role === 'user'} />
+                  ))}
+                </>
               )}
+              
+              {/* Typing Animation Block */}
               {sending && (
-                <div className="chat-message ai-message">
-                  <div className="message-avatar">🤖</div>
-                  <div className="message-content">
+                <div className="chat-message ai-message align-left">
+                  <div className="message-avatar">
+                    <BotIcon />
+                  </div>
+                  <div className="message-content typing-message">
                     <div className="typing-indicator">
                       <div className="typing-dot"></div>
                       <div className="typing-dot"></div>
@@ -275,31 +269,46 @@ export default function AcidChat() {
                   </div>
                 </div>
               )}
+              
               <div ref={messagesEndRef} />
             </div>
 
             {error && <div className="chat-error">{error}</div>}
 
-            <form className="chat-input-form" onSubmit={handleSendMessage}>
-              <input
-                type="text"
-                className="chat-input"
-                placeholder="Type your message..."
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                disabled={sending}
-              />
-              <button
-                type="submit"
-                className="btn btn-primary btn-send"
-                disabled={!inputValue.trim() || sending}
-              >
-                <SendIcon />
-              </button>
-            </form>
+            <div className="chat-input-container">
+              <form className="chat-input-form" onSubmit={handleSendMessage}>
+                <input
+                  type="text"
+                  className="chat-input"
+                  placeholder="Ask ACID..."
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  disabled={sending}
+                />
+                <button type="submit" className="btn-send" disabled={!inputValue.trim() || sending}>
+                  <SendIcon />
+                </button>
+              </form>
+              <div className="chat-disclaimer">
+                ACID can make mistakes. Verify critical dataset information independently.
+              </div>
+            </div>
           </>
         )}
       </div>
+
+      <ConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setConversationToDelete(null);
+        }}
+        onConfirm={handleDeleteConversation}
+        title="Delete this conversation?"
+        message="This action cannot be undone. All messages in this conversation will be permanently deleted."
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 }

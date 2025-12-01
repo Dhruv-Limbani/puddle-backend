@@ -1,9 +1,9 @@
 import React from 'react';
 import { BotIcon, UsersIcon } from './icons';
 import ToolCallDisplay from './ToolCallDisplay';
-import './ChatMessage.css';
+import './TideChatMessage.css';
 
-export default function ChatMessage({ message, isUser, agentName = 'ACID' }) {
+export default function TideChatMessage({ message, isUser }) {
   const renderMarkdown = (text) => {
     if (!text) return '';
     let html = text
@@ -15,6 +15,7 @@ export default function ChatMessage({ message, isUser, agentName = 'ACID' }) {
     html = html.replace(/(<li>.*?<\/li>)/gs, '<ul>$1</ul>');
     return html;
   };
+
   const parseToolCalls = () => {
     if (!message.tool_call) return null;
     try {
@@ -25,6 +26,7 @@ export default function ChatMessage({ message, isUser, agentName = 'ACID' }) {
   };
 
   const toolCalls = parseToolCalls();
+
   const formatTime = (timestamp) => {
     const date = new Date(timestamp);
     const hours = date.getHours();
@@ -36,16 +38,16 @@ export default function ChatMessage({ message, isUser, agentName = 'ACID' }) {
   };
 
   return (
-    <div className={`chat-message ${isUser ? 'user-message' : 'ai-message'} ${isUser ? 'align-right' : 'align-left'}`}>
-      <div className="message-avatar">
+    <div className={`tide-chat-message ${isUser ? 'tide-user-message' : 'tide-ai-message'} ${isUser ? 'tide-align-right' : 'tide-align-left'}`}>
+      <div className="tide-message-avatar">
         {isUser ? <UsersIcon /> : <BotIcon />}
       </div>
-      <div className="message-content">
-        <div className="message-header">
-          <span className="message-sender">{isUser ? 'You' : agentName}</span>
-          <span className="message-time">{formatTime(message.created_at)}</span>
+      <div className="tide-message-content">
+        <div className="tide-message-header">
+          <span className="tide-message-sender">{isUser ? 'You' : 'TIDE'}</span>
+          <span className="tide-message-time">{formatTime(message.created_at)}</span>
         </div>
-        <div className="message-text" dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }} />
+        <div className="tide-message-text" dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }} />
         {toolCalls && <ToolCallDisplay toolCalls={toolCalls} />}
       </div>
     </div>

@@ -25,6 +25,7 @@ export default function VendorDashboard() {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState('profile');
   const [isMinimized, setIsMinimized] = useState(false);
+  const [marketplaceView, setMarketplaceView] = useState({ type: 'list', id: null });
 
   useEffect(() => {
     // This logic is fine, it will set the tab based on the URL
@@ -50,16 +51,21 @@ export default function VendorDashboard() {
     // navigate(item.path); // Uncomment if you want URL-based navigation
   };
 
+  const handleNavigateToDataset = (datasetId) => {
+    setMarketplaceView({ type: 'dataset', id: datasetId });
+    setActiveTab('marketplace');
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case 'profile':
         return <VendorProfile />;
       case 'marketplace':
-        return <Marketplace />;
+        return <Marketplace view={marketplaceView} setView={setMarketplaceView} />;
       case 'data-catalog':
         return <DataCatalogTab />;
       case 'inquiries':
-        return <TideInquiries />;
+        return <TideInquiries onNavigateToDataset={handleNavigateToDataset} />;
       case 'agents':
         return <AgentManager />;
       default:

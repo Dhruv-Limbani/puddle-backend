@@ -6,14 +6,13 @@ from pydantic import BaseModel, Field
 class InquiryBase(BaseModel):
     buyer_inquiry: Optional[Dict[str, Any]] = Field(default_factory=dict)
     vendor_response: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    summary: Optional[str] = None
     status: Optional[Literal[
-        "draft",
         "submitted",
-        "pending_review",
         "responded",
         "accepted",
         "rejected",
-    ]] = "draft"
+    ]] = None
 
 class InquiryCreate(InquiryBase):
     buyer_id: UUID
@@ -24,6 +23,7 @@ class InquiryCreate(InquiryBase):
 class InquiryUpdate(BaseModel):
     buyer_inquiry: Optional[Dict[str, Any]] = None
     vendor_response: Optional[Dict[str, Any]] = None
+    summary: Optional[str] = None
     status: Optional[str] = None
 
 class InquiryRead(InquiryBase):
@@ -43,4 +43,5 @@ class InquiryReadEnriched(InquiryRead):
     """Inquiry read model with resolved display fields for frontend convenience."""
     dataset_title: Optional[str] = None
     vendor_name: Optional[str] = None
+    buyer_name: Optional[str] = None
 

@@ -277,9 +277,11 @@ class Inquiry(Base):
     buyer_inquiry = Column(JSONB if JSONB else JSON, default=dict)
     vendor_response = Column(JSONB if JSONB else JSON, default=dict)
 
+    summary = Column(Text)
+
     # Status
-    status = Column(String(50), default="draft")
-    # Allowed values: 'draft', 'submitted', 'pending_review', 'responded', 'accepted', 'rejected'
+    status = Column(String(50), default=None)
+    # Allowed values: 'submitted', 'responded', 'accepted', 'rejected'
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)

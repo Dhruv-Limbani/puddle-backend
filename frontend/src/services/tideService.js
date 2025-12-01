@@ -65,85 +65,20 @@ export const tideService = {
     return await response.json()
   },
 
-  // Conversations
-  async createConversation(token, title = null) {
-    const payload = title ? { title } : {}
-    const response = await fetch(`${API_BASE_URL}/tide/conversations`, {
+  // Simple stateless chat for TIDE
+  async sendChatMessage(token, inquiryId, content) {
+    const response = await fetch(`${API_BASE_URL}/tide/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(payload),
-    })
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Failed to create conversation' }))
-      throw new Error(error.detail || 'Failed to create conversation')
-    }
-
-    return await response.json()
-  },
-
-  async listConversations(token) {
-    const response = await fetch(`${API_BASE_URL}/tide/conversations`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Failed to load conversations' }))
-      throw new Error(error.detail || 'Failed to load conversations')
-    }
-
-    return await response.json()
-  },
-
-  async getConversation(token, conversationId) {
-    const response = await fetch(`${API_BASE_URL}/tide/conversations/${conversationId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Failed to load conversation' }))
-      throw new Error(error.detail || 'Failed to load conversation')
-    }
-
-    return await response.json()
-  },
-
-  // Messages
-  async sendMessage(token, conversationId, content) {
-    const response = await fetch(`${API_BASE_URL}/tide/conversations/${conversationId}/messages`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ inquiry_id: inquiryId, content }),
     })
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Failed to send message' }))
       throw new Error(error.detail || 'Failed to send message')
-    }
-
-    return await response.json()
-  },
-
-  async getMessages(token, conversationId) {
-    const response = await fetch(`${API_BASE_URL}/tide/conversations/${conversationId}/messages`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Failed to load messages' }))
-      throw new Error(error.detail || 'Failed to load messages')
     }
 
     return await response.json()
