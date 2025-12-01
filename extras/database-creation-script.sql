@@ -196,13 +196,13 @@ CREATE TABLE inquiries (
     
     -- VENDOR STATE (BASE writes, ACID reads)
     vendor_response JSONB DEFAULT '{}'::JSONB,
-    
+
+	summary TEXT,
+	
     -- STATUS
-    status VARCHAR(50) DEFAULT 'draft' CHECK (status IN (
-        'draft',           -- ACID still building it
-        'submitted',       -- Sent to vendor
-        'pending_review',  -- Vendor human needs to review
-        'responded',       -- Vendor responded, buyer can see
+    status VARCHAR(50) DEFAULT NULL CHECK (status IN (
+        'submitted',       -- Sent to vendor but vendor not yet responded back
+        'responded',       -- Vendor responded, buyer can see but buyer not yet responded back
         'accepted',        -- Deal done
         'rejected'         -- Deal lost
     )),
