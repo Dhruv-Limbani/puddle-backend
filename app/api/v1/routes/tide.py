@@ -687,9 +687,10 @@ async def trigger_inquiry_notification(
 # ==========================================
 
 class TideChatMessage(BaseModel):
-    """Simple chat message for TIDE"""
+    """Chat message for TIDE with conversation history"""
     content: str
     inquiry_id: str
+    conversation_history: Optional[List[Dict[str, str]]] = []  # List of {role, content} messages
 
 
 class TideChatResponse(BaseModel):
@@ -705,15 +706,15 @@ async def tide_chat(
     db: AsyncSession = Depends(get_session),
 ):
     """
-    Simple stateless chat with TIDE for inquiry assistance.
+    Stateful chat with TIDE for inquiry assistance.
     
     This endpoint:
     1. Verifies vendor access and inquiry ownership
-    2. Gets inquiry context (buyer info, dataset info)
-    3. Sends message to TIDE AI
+    2. Gets fresh inquiry context from database
+    3. Uses conversation history provided by frontend
     4. Returns response with any tool calls
     
-    No conversation history is persisted - each message is independent.
+    NO conversation history is persisted - frontend manages the session state.
     """
     vendor = await _verify_vendor_access(db, current_user)
     
@@ -726,7 +727,7 @@ async def tide_chat(
     if str(inquiry.vendor_id) != str(vendor.id):
         raise HTTPException(status_code=403, detail="Not authorized to access this inquiry")
     
-    # Get related data for context
+    # Get related data for fresh context
     dataset = await db.get(Dataset, inquiry.dataset_id) if inquiry.dataset_id else None
     buyer = await db.get(Buyer, inquiry.buyer_id) if inquiry.buyer_id else None
     
@@ -745,6 +746,7 @@ async def tide_chat(
     
     # Build concise context message for TIDE
     buyer_inquiry_str = json.dumps(inquiry.buyer_inquiry, indent=2) if inquiry.buyer_inquiry else 'No specific requirements listed'
+    vendor_response_str = json.dumps(inquiry.vendor_response, indent=2) if inquiry.vendor_response else 'No response yet'
     
     context_message = f"""[INQUIRY CONTEXT - inquiry_id: {inquiry.id}]
 Dataset: {dataset.title if dataset else 'N/A'}
@@ -754,11 +756,22 @@ Status: {inquiry.status}
 Buyer's Requirements:
 {buyer_inquiry_str}
 
+Vendor's Response (if any):
+{vendor_response_str}
+
 Negotiation History:
 {inquiry.summary if inquiry.summary else 'New inquiry - no history yet.'}
 
 ---
 Vendor asks: {message.content}"""
+    
+    # Build messages array from conversation history + current message
+    messages = []
+    if message.conversation_history:
+        messages.extend(message.conversation_history)
+    
+    # Add current message with fresh context
+    messages.append({"role": "user", "content": context_message})
     
     # Process with TIDE AI engine
     from app.core.ai_engine import get_tide_engine, get_tide_system_prompt
@@ -766,9 +779,9 @@ Vendor asks: {message.content}"""
     try:
         tide = await get_tide_engine()
         
-        # Include rich context in the message
+        # Include conversation history with fresh context
         response_data = await tide.process_conversation(
-            messages=[{"role": "user", "content": context_message}],
+            messages=messages,
             system_prompt=get_tide_system_prompt(),
             context=context
         )

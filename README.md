@@ -144,3 +144,7 @@ Double-check that:
 * PostgreSQL server is active
 * Backend is running without errors
 * Frontend is running and pointing to the correct backend URL
+
+
+Test buyer: jack.bennett@amazon-retail.com
+Test vendor: sales@ecomanalytics.io
