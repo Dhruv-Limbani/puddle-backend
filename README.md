@@ -1,3 +1,82 @@
+# 🏗️ Puddle Data Marketplace
+
+A two-sided AI-powered marketplace connecting data buyers with data vendors through intelligent agents (ACID for buyers, TIDE for vendors).
+
+---
+
+## 📊 Architecture Overview
+
+```mermaid
+graph TD
+    %% STYLES
+    classDef frontend fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef backend fill:#fff3e0,stroke:#e65100,stroke-width:2px;
+    classDef ai fill:#f3e5f5,stroke:#4a148c,stroke-width:2px;
+    classDef db fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px;
+    classDef ext fill:#eceff1,stroke:#455a64,stroke-width:2px,stroke-dasharray: 5 5;
+
+    %% EXTERNAL ACTORS
+    Buyer([User: Buyer])
+    Vendor([User: Vendor])
+
+    %% FRONTEND LAYER
+    subgraph Client_Side ["Frontend :: React App"]
+        BuyerUI["Buyer Dashboard"]:::frontend
+        VendorUI["Vendor Dashboard"]:::frontend
+    end
+
+    %% BACKEND LAYER
+    subgraph Server_Side ["Backend :: FastAPI"]
+        API["API Gateway / Routes"]:::backend
+        
+        subgraph AI_Core ["AI Engine Module"]
+            ACID["ACID Agent<br/>(Buyer Persona)"]:::ai
+            TIDE["TIDE Agent<br/>(Vendor Persona)"]:::ai
+            ToolMgr["Tool Manager / MCP Client"]:::ai
+        end
+    end
+
+    %% EXTERNAL AI SERVICES
+    subgraph External_Svcs ["External Services"]
+        LLM["LLM Provider<br/>OpenRouter"]:::ext
+    end
+
+    %% DATA LAYER
+    subgraph Persistence ["PostgreSQL Database"]
+        Tables["Relational Tables<br/>Users, Datasets, Vendors"]:::db
+        VectorStore["pgvector<br/>Embeddings for Search"]:::db
+        InquiryState["Inquiries Table<br/>State: Submitted <-> Responded<br/>History: 'summary' column"]:::db
+    end
+
+    %% FLOWS - BUYER / ACID
+    Buyer -->|Interacts| BuyerUI
+    BuyerUI -->|REST/WS| API
+    API -->|Init| ACID
+    ACID <-->|Inference| LLM
+    ACID -->|"1. Semantic Search"| ToolMgr
+    ACID -->|"2. Create Inquiry (Status: Submitted)"| ToolMgr
+
+    %% FLOWS - VENDOR / TIDE
+    Vendor -->|Interacts| VendorUI
+    VendorUI -->|REST/WS| API
+    API -->|Init| TIDE
+    TIDE <-->|Inference| LLM
+    TIDE -->|"3. Get Work Queue (Status: Submitted)"| ToolMgr
+    TIDE -->|"4. Submit Response (Status: Responded)"| ToolMgr
+
+    %% TOOL EXECUTION FLOW
+    ToolMgr -->|"Semantic Search"| VectorStore
+    ToolMgr -->|"Read Metadata"| Tables
+    ToolMgr -->|"Write JSON & Summary"| InquiryState
+    ToolMgr -->|"Update JSON & Summary"| InquiryState
+
+    %% DATABASE LINKS
+    VectorStore -.-> Tables
+    InquiryState -.-> Tables
+```
+
+---
+
 # 🛠️ Local Development Setup Guide
 
 This guide will walk you through setting up the **backend**, **database**, and **frontend** for local development and testing.
