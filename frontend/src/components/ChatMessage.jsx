@@ -1,20 +1,11 @@
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { BotIcon, UsersIcon } from './icons';
 import ToolCallDisplay from './ToolCallDisplay';
 import './ChatMessage.css';
 
 export default function ChatMessage({ message, isUser, agentName = 'ACID' }) {
-  const renderMarkdown = (text) => {
-    if (!text) return '';
-    let html = text
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/^\s*\-\s+(.*)$/gm, '<li>$1</li>')
-      .replace(/\n/g, '<br/>');
-    // Wrap list items in <ul>
-    html = html.replace(/(<li>.*?<\/li>)/gs, '<ul>$1</ul>');
-    return html;
-  };
   const parseToolCalls = () => {
     if (!message.tool_call) return null;
     try {
@@ -45,7 +36,9 @@ export default function ChatMessage({ message, isUser, agentName = 'ACID' }) {
           <span className="message-sender">{isUser ? 'You' : agentName}</span>
           <span className="message-time">{formatTime(message.created_at)}</span>
         </div>
-        <div className="message-text" dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }} />
+        <div className="message-text">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+        </div>
         {toolCalls && <ToolCallDisplay toolCalls={toolCalls} />}
       </div>
     </div>

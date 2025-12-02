@@ -1,20 +1,11 @@
 import React from 'react';
-import { BotIcon, UsersIcon } from './icons';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { BotIcon, UsersIcon } from './Icons';
 import ToolCallDisplay from './ToolCallDisplay';
 import './TideChatMessage.css';
 
 export default function TideChatMessage({ message, isUser }) {
-  const renderMarkdown = (text) => {
-    if (!text) return '';
-    let html = text
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/^\s*\-\s+(.*)$/gm, '<li>$1</li>')
-      .replace(/\n/g, '<br/>');
-    // Wrap list items in <ul>
-    html = html.replace(/(<li>.*?<\/li>)/gs, '<ul>$1</ul>');
-    return html;
-  };
 
   const parseToolCalls = () => {
     if (!message.tool_call) return null;
@@ -47,7 +38,9 @@ export default function TideChatMessage({ message, isUser }) {
           <span className="tide-message-sender">{isUser ? 'You' : 'TIDE'}</span>
           <span className="tide-message-time">{formatTime(message.created_at)}</span>
         </div>
-        <div className="tide-message-text" dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }} />
+        <div className="tide-message-text">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+        </div>
         {toolCalls && <ToolCallDisplay toolCalls={toolCalls} />}
       </div>
     </div>
