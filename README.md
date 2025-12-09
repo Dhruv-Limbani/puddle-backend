@@ -81,7 +81,9 @@ graph TD
 
 Check out our demo video to see Puddle in action:
 
-[![Puddle Demo Video](https://img.shields.io/badge/Watch%20Demo-▶%20Video-blue?style=for-the-badge)](VIDEO_URL_HERE)
+
+https://github.com/user-attachments/assets/9a7db748-2a93-4832-ba0d-c837760fab0e
+
 
 ---
 
