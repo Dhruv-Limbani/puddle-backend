@@ -2,10 +2,10 @@
 TIDE Agent Routes - Vendor-facing AI assistant
 
 This module provides endpoints for:
-- Vendor inquiry management
-- AI-powered inquiry summarization
-- Vendor response handling
-- Vendor chat with TIDE
+ Vendor inquiry management
+ AI-powered inquiry summarization
+ Vendor response handling
+ Vendor chat with TIDE
 """
 
 from typing import List, Dict, Any, Optional
@@ -22,7 +22,7 @@ from app.core.auth import get_current_user
 from app.schemas.user import UserRead
 from app.schemas.conversation import ConversationCreate, ConversationRead, ConversationUpdate
 from app.schemas.chat_message import ChatMessageCreate, ChatMessageRead
-from app.schemas.inquiry import InquiryCreate, InquiryRead, InquiryUpdate
+from app.schemas.inquiry import InquiryCreate, InquiryRead, InquiryUpdate, InquiryReadEnriched
 from app.crud import crud_conversation, crud_chat_message, crud_inquiry
 from app.models.models import Vendor, Inquiry, Dataset, Buyer
 
@@ -59,29 +59,6 @@ async def _verify_vendor_access(
     
     return vendor
 
-
-async def _get_inquiry_for_vendor(
-    db: AsyncSession, 
-    inquiry_id: UUID, 
-    vendor: Vendor
-) -> Inquiry:
-    """Get inquiry and verify it belongs to the vendor"""
-    inquiry = await crud_inquiry.get_inquiry(db, inquiry_id)
-    if not inquiry:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="Inquiry not found"
-        )
-    
-    if str(inquiry.vendor_id) != str(vendor.id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Not authorized to access this inquiry"
-        )
-    
-    return inquiry
-
-
 # ==========================================
 # PYDANTIC SCHEMAS FOR TIDE
 # ==========================================
@@ -110,13 +87,11 @@ class InquirySummaryResponse(BaseModel):
     dataset_title: Optional[str] = None
     status: str
     buyer_requirements: Optional[Dict[str, Any]] = None
-
-
 # ==========================================
 # INQUIRY ENDPOINTS (Vendor View)
 # ==========================================
 
-@router.get("/inquiries", response_model=List[InquiryRead])
+@router.get("/inquiries", response_model=List[InquiryReadEnriched])
 async def list_vendor_inquiries(
     status_filter: Optional[str] = None,
     limit: int = 50,
@@ -125,27 +100,57 @@ async def list_vendor_inquiries(
     db: AsyncSession = Depends(get_session),
 ):
     """
-    List all inquiries for the current vendor.
+    List all inquiries for the current vendor with enriched data.
     
-    Optionally filter by status:
-    - draft: Buyer is still working on inquiry
-    - submitted: Buyer submitted, awaiting vendor review
-    - pending_review: Vendor is reviewing
-    - responded: Vendor has responded with pricing
-    - accepted: Buyer accepted the offer
-    - rejected: Vendor rejected the inquiry
+    Returns inquiries with buyer_name and dataset_title resolved.
     """
     vendor = await _verify_vendor_access(db, current_user)
     
-    inquiries = await crud_inquiry.list_inquiries_by_vendor(
-        db, vendor_id=vendor.id, limit=limit, offset=offset
-    )
+    query = select(
+        Inquiry,
+        Dataset.title.label('dataset_title'),
+        Buyer.name.label('buyer_name')
+    ).join(
+        Dataset, Inquiry.dataset_id == Dataset.id
+    ).join(
+        Buyer, Inquiry.buyer_id == Buyer.id
+    ).where(
+        Inquiry.vendor_id == vendor.id
+    ).order_by(
+        Inquiry.created_at.desc()
+    ).limit(limit).offset(offset)
+    
+    result = await db.execute(query)
+    rows = result.all()
+    
+    # Build enriched response
+    enriched_inquiries = []
+    for row in rows:
+        inquiry = row[0]
+        # Create enriched inquiry with explicit field mapping
+        enriched = InquiryReadEnriched(
+            id=inquiry.id,
+            buyer_id=inquiry.buyer_id,
+            vendor_id=inquiry.vendor_id,
+            dataset_id=inquiry.dataset_id,
+            conversation_id=inquiry.conversation_id,
+            buyer_inquiry=inquiry.buyer_inquiry,
+            vendor_response=inquiry.vendor_response,
+            summary=inquiry.summary,
+            status=inquiry.status,
+            created_at=inquiry.created_at,
+            updated_at=inquiry.updated_at,
+            dataset_title=row[1],
+            buyer_name=row[2],
+            vendor_name=None  # Not needed for vendor view
+        )
+        enriched_inquiries.append(enriched)
     
     # Filter by status if provided
     if status_filter:
-        inquiries = [i for i in inquiries if i.status == status_filter]
+        enriched_inquiries = [i for i in enriched_inquiries if i.status == status_filter]
     
-    return inquiries
+    return enriched_inquiries
 
 
 @router.get("/inquiries/pending", response_model=List[InquiryRead])
@@ -155,7 +160,7 @@ async def list_pending_inquiries(
 ):
     """
     List inquiries that need vendor review.
-    These are inquiries with status 'submitted' or 'pending_review'.
+    These are inquiries with status 'submitted'.
     
     This is the primary endpoint for vendors to see what needs attention.
     """
@@ -167,8 +172,7 @@ async def list_pending_inquiries(
     )
     
     # Filter for pending ones
-    pending_statuses = ['submitted', 'pending_review']
-    pending = [i for i in all_inquiries if i.status in pending_statuses]
+    pending = [i for i in all_inquiries if i.status == 'submitted']
     
     return pending
 
@@ -189,7 +193,7 @@ async def get_inquiry_stats(
     
     stats = {
         "total": len(all_inquiries),
-        "pending": len([i for i in all_inquiries if i.status in ['submitted', 'pending_review']]),
+        "pending": len([i for i in all_inquiries if i.status == 'submitted']),
         "responded": len([i for i in all_inquiries if i.status == 'responded']),
         "accepted": len([i for i in all_inquiries if i.status == 'accepted']),
         "rejected": len([i for i in all_inquiries if i.status == 'rejected']),
@@ -211,7 +215,9 @@ async def get_inquiry_details(
     - Buyer information (limited for privacy)
     """
     vendor = await _verify_vendor_access(db, current_user)
-    inquiry = await _get_inquiry_for_vendor(db, inquiry_id, vendor)
+    inquiry = await crud_inquiry.get_inquiry(db, inquiry_id)
+    if not inquiry or str(inquiry.vendor_id) != str(vendor.id):
+        raise HTTPException(status_code=404, detail="Inquiry not found for this vendor")
     
     # Get dataset details
     dataset = await db.get(Dataset, inquiry.dataset_id)
@@ -268,7 +274,9 @@ async def respond_to_inquiry(
     For 'approve' action, final_price is required.
     """
     vendor = await _verify_vendor_access(db, current_user)
-    inquiry = await _get_inquiry_for_vendor(db, inquiry_id, vendor)
+    inquiry = await crud_inquiry.get_inquiry(db, inquiry_id)
+    if not inquiry or str(inquiry.vendor_id) != str(vendor.id):
+        raise HTTPException(status_code=404, detail="Inquiry not found for this vendor")
     
     # Build vendor_response JSON
     vendor_response = {
@@ -302,7 +310,7 @@ async def respond_to_inquiry(
                 detail="notes field is required when requesting more information"
             )
         vendor_response["info_requested"] = response_in.notes
-        new_status = "pending_review"  # Keep in review until buyer responds
+        new_status = "submitted"  # Keep as submitted until buyer responds
         
     else:
         raise HTTPException(
@@ -331,14 +339,16 @@ async def update_inquiry_status(
     Update inquiry status manually.
     
     Allowed statuses for vendor:
-    - pending_review: Mark as under review
+    - submitted: Mark as submitted (awaiting response)
     - responded: Mark as responded (usually done via /respond endpoint)
     - rejected: Mark as rejected
     """
     vendor = await _verify_vendor_access(db, current_user)
-    inquiry = await _get_inquiry_for_vendor(db, inquiry_id, vendor)
+    inquiry = await crud_inquiry.get_inquiry(db, inquiry_id)
+    if not inquiry or str(inquiry.vendor_id) != str(vendor.id):
+        raise HTTPException(status_code=404, detail="Inquiry not found for this vendor")
     
-    allowed_statuses = ['pending_review', 'responded', 'rejected']
+    allowed_statuses = ['submitted', 'responded', 'rejected']
     if new_status not in allowed_statuses:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
@@ -368,7 +378,9 @@ async def generate_inquiry_summary(
     - Recommended next steps
     """
     vendor = await _verify_vendor_access(db, current_user)
-    inquiry = await _get_inquiry_for_vendor(db, inquiry_id, vendor)
+    inquiry = await crud_inquiry.get_inquiry(db, inquiry_id)
+    if not inquiry or str(inquiry.vendor_id) != str(vendor.id):
+        raise HTTPException(status_code=404, detail="Inquiry not found for this vendor")
     
     # Get dataset info
     dataset = await db.get(Dataset, inquiry.dataset_id)
@@ -388,60 +400,19 @@ async def generate_inquiry_summary(
         "buyer_inquiry": inquiry.buyer_inquiry if inquiry.buyer_inquiry else {},
     }
     
-    # Use AI to generate summary
-    from app.utils.mcp_client import get_openai_client
-    
-    prompt = f"""You are TIDE, an AI assistant helping data vendors review buyer inquiries.
-
-Summarize this dataset inquiry for the vendor representative:
-
-DATASET INFORMATION:
-- Title: {context['dataset_title']}
-- Description: {context['dataset_description']}
-- Domain: {context['dataset_domain']}
-- Pricing Model: {context['dataset_pricing_model']}
-
-BUYER INFORMATION:
-- Organization: {context['buyer_organization']}
-- Industry: {context['buyer_industry']}
-- Use Case Focus: {context['buyer_use_case']}
-
-BUYER'S INQUIRY DETAILS:
-{json.dumps(context['buyer_inquiry'], indent=2) if context['buyer_inquiry'] else 'No specific details provided'}
-
-Please provide a clear, concise summary covering:
-1. **What the buyer wants**: Summarize their request in 1-2 sentences
-2. **Key requirements**: Any specific needs mentioned (data format, time period, volume, etc.)
-3. **Buyer context**: Relevant info about their organization/use case
-4. **Considerations**: Any points the vendor should think about
-5. **Recommended action**: Approve, reject, or request more info - with brief reasoning
-
-Keep the summary brief (under 300 words) and actionable."""
-
+    # Generate summary via service
+    from app.services.inquiry_service import generate_inquiry_summary as svc_generate_summary
     try:
-        client = get_openai_client()
-        response = await client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.5,
-            max_tokens=500
-        )
-        
-        summary = response.choices[0].message.content
-        
+        res = await svc_generate_summary(db, inquiry_id)
         return InquirySummaryResponse(
-            inquiry_id=str(inquiry_id),
-            summary=summary,
-            dataset_title=dataset.title if dataset else None,
-            status=inquiry.status,
-            buyer_requirements=inquiry.buyer_inquiry
+            inquiry_id=res["inquiry_id"],
+            summary=res["summary"],
+            dataset_title=res.get("dataset_title"),
+            status=res.get("status", inquiry.status),
+            buyer_requirements=res.get("buyer_requirements"),
         )
-        
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=f"Failed to generate summary: {str(e)}"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate summary: {str(e)}")
 
 
 # ==========================================
@@ -616,34 +587,47 @@ async def send_tide_message(
         }
     )
     
-    # 2. Get conversation history for context
+    # 2. Get conversation history and rebuild it properly
     all_messages = await crud_chat_message.list_chat_messages(
         db, conversation_id=conversation_id, limit=50
     )
     
-    history = [
-        {"role": msg.role, "content": msg.content}
-        for msg in all_messages[:-1]  # Exclude the message we just added
-    ]
+    # Use the conversation manager to rebuild history with proper tool call format
+    from app.core.conversation_manager import rebuild_conversation_history
+    history = rebuild_conversation_history(all_messages[:-1])  # Exclude the just-saved user message
     
-    # 3. Call TIDE AI processor
-    from app.utils.mcp_client import process_tide_chat
+    # Add current user message
+    messages = history + [{"role": "user", "content": message.get("content", "")}]
     
+    # 3. Process with AI engine
+    from app.core.ai_engine import get_tide_engine, get_tide_system_prompt
+
     try:
-        response_data = await process_tide_chat(
-        message=message.get("content", ""),
-        conversation_history=history,
-        vendor_id=str(vendor.id),
-        conversation_id=str(conversation_id),
-        db=db,  # <-- ADD THIS LINE
-    )
+        tide = await get_tide_engine()
+        
+        # Process conversation
+        response_data = await tide.process_conversation(
+            messages=messages,
+            system_prompt=get_tide_system_prompt(),
+            context={"vendor_id": str(vendor.id), "conversation_id": str(conversation_id)}
+        )
         
         ai_content = response_data.get("content", "I'm having trouble processing that request.")
-        tool_calls = response_data.get("tool_calls")
+        tool_calls_list = response_data.get("tool_calls")
+        
+        # Convert tool_calls format for database
+        tool_call_payload = None
+        if tool_calls_list:
+            tool_call_payload = {
+                "calls": tool_calls_list  # Already in correct format
+            }
         
     except Exception as e:
-        ai_content = f"I'm having trouble connecting to my AI systems. Please try again. Error: {str(e)}"
-        tool_calls = None
+        print(f"❌ TIDE error: {e}")
+        import traceback
+        traceback.print_exc()
+        ai_content = f"I'm having trouble connecting to my AI systems. Please try again."
+        tool_call_payload = None
     
     # 4. Save AI response
     ai_message = await crud_chat_message.create_chat_message(
@@ -652,7 +636,7 @@ async def send_tide_message(
             "conversation_id": conversation_id,
             "role": "assistant",
             "content": ai_content,
-            "tool_call": tool_calls,
+            "tool_call": tool_call_payload,
         }
     )
     
@@ -663,85 +647,11 @@ async def send_tide_message(
 
 
 # ==========================================
-# DATASET ENDPOINTS (Vendor's Own Datasets)
-# ==========================================
-
-@router.get("/datasets", response_model=List[Dict[str, Any]])
-async def list_vendor_datasets(
-    limit: int = 50,
-    offset: int = 0,
-    current_user: UserRead = Depends(get_current_user),
-    db: AsyncSession = Depends(get_session),
-):
-    """
-    List all datasets owned by the current vendor.
-    Useful for TIDE to reference when discussing inquiries.
-    """
-    vendor = await _verify_vendor_access(db, current_user)
-    
-    result = await db.execute(
-        select(Dataset)
-        .where(Dataset.vendor_id == str(vendor.id))
-        .limit(limit)
-        .offset(offset)
-    )
-    datasets = result.scalars().all()
-    
-    return [
-        {
-            "id": str(d.id),
-            "title": d.title,
-            "description": d.description,
-            "domain": d.domain,
-            "pricing_model": d.pricing_model,
-            "license": d.license,
-            "status": d.status,
-        }
-        for d in datasets
-    ]
-
-
-@router.get("/datasets/{dataset_id}", response_model=Dict[str, Any])
-async def get_vendor_dataset(
-    dataset_id: UUID,
-    current_user: UserRead = Depends(get_current_user),
-    db: AsyncSession = Depends(get_session),
-):
-    """
-    Get detailed information about a vendor's dataset.
-    """
-    vendor = await _verify_vendor_access(db, current_user)
-    
-    dataset = await db.get(Dataset, dataset_id)
-    if not dataset:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="Dataset not found"
-        )
-    
-    if str(dataset.vendor_id) != str(vendor.id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Not authorized to access this dataset"
-        )
-    
-    return {
-        "id": str(dataset.id),
-        "title": dataset.title,
-        "description": dataset.description,
-        "domain": dataset.domain,
-        "dataset_type": dataset.dataset_type,
-        "granularity": dataset.granularity,
-        "pricing_model": dataset.pricing_model,
-        "license": dataset.license,
-        "topics": dataset.topics,
-        "entities": dataset.entities,
-        "temporal_coverage": dataset.temporal_coverage,
-        "geographic_coverage": dataset.geographic_coverage,
-        "status": dataset.status,
-        "visibility": dataset.visibility,
-    }
-    
+### NOTE: Dataset-related endpoints removed.
+# Vendors should use global /datasets endpoints:
+#   GET /api/v1/datasets/me/        (their own datasets)
+#   GET /api/v1/datasets/{id}       (detail with RBAC)
+# This keeps dataset logic centralized.
 @router.post("/notify/{inquiry_id}")
 async def trigger_inquiry_notification(
     inquiry_id: UUID,
@@ -760,8 +670,8 @@ async def trigger_inquiry_notification(
     dataset = await db.get(Dataset, inquiry.dataset_id)
     buyer = await db.get(Buyer, inquiry.buyer_id)
     
-    from app.utils.mcp_client import notify_vendor_of_new_inquiry
-    
+    from app.services.inquiry_service import notify_vendor_of_new_inquiry
+
     result = await notify_vendor_of_new_inquiry(
         db=db,
         vendor_id=str(inquiry.vendor_id),
@@ -771,3 +681,124 @@ async def trigger_inquiry_notification(
     )
     
     return result
+
+# ==========================================
+# TIDE CHAT ENDPOINT (Stateless)
+# ==========================================
+
+class TideChatMessage(BaseModel):
+    """Chat message for TIDE with conversation history"""
+    content: str
+    inquiry_id: str
+    conversation_history: Optional[List[Dict[str, str]]] = []  # List of {role, content} messages
+
+
+class TideChatResponse(BaseModel):
+    """TIDE chat response"""
+    content: str
+    tool_calls: Optional[List[Dict[str, Any]]] = None
+
+
+@router.post("/chat", response_model=TideChatResponse)
+async def tide_chat(
+    message: TideChatMessage,
+    current_user: UserRead = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """
+    Stateful chat with TIDE for inquiry assistance.
+    
+    This endpoint:
+    1. Verifies vendor access and inquiry ownership
+    2. Gets fresh inquiry context from database
+    3. Uses conversation history provided by frontend
+    4. Returns response with any tool calls
+    
+    NO conversation history is persisted - frontend manages the session state.
+    """
+    vendor = await _verify_vendor_access(db, current_user)
+    
+    # Verify inquiry belongs to this vendor
+    inquiry_id = UUID(message.inquiry_id)
+    inquiry = await db.get(Inquiry, inquiry_id)
+    if not inquiry:
+        raise HTTPException(status_code=404, detail="Inquiry not found")
+    
+    if str(inquiry.vendor_id) != str(vendor.id):
+        raise HTTPException(status_code=403, detail="Not authorized to access this inquiry")
+    
+    # Get related data for fresh context
+    dataset = await db.get(Dataset, inquiry.dataset_id) if inquiry.dataset_id else None
+    buyer = await db.get(Buyer, inquiry.buyer_id) if inquiry.buyer_id else None
+    
+    # Build context for TIDE
+    context = {
+        "vendor_id": str(vendor.id),
+        "inquiry_id": str(inquiry.id),
+        "inquiry_summary": inquiry.summary,
+        "inquiry_status": inquiry.status,
+        "dataset_title": dataset.title if dataset else None,
+        "dataset_description": dataset.description if dataset else None,
+        "buyer_name": buyer.name if buyer else None,
+        "buyer_organization": buyer.organization if buyer else None,
+        "buyer_industry": buyer.industry if buyer else None,
+    }
+    
+    # Build concise context message for TIDE
+    buyer_inquiry_str = json.dumps(inquiry.buyer_inquiry, indent=2) if inquiry.buyer_inquiry else 'No specific requirements listed'
+    vendor_response_str = json.dumps(inquiry.vendor_response, indent=2) if inquiry.vendor_response else 'No response yet'
+    
+    context_message = f"""[INQUIRY CONTEXT - inquiry_id: {inquiry.id}]
+Dataset: {dataset.title if dataset else 'N/A'}
+Buyer: {buyer.name if buyer else 'Unknown'} from {buyer.organization if buyer else 'N/A'}
+Status: {inquiry.status}
+
+Buyer's Requirements:
+{buyer_inquiry_str}
+
+Vendor's Response (if any):
+{vendor_response_str}
+
+Negotiation History:
+{inquiry.summary if inquiry.summary else 'New inquiry - no history yet.'}
+
+---
+Vendor asks: {message.content}"""
+    
+    # Build messages array from conversation history + current message
+    messages = []
+    if message.conversation_history:
+        messages.extend(message.conversation_history)
+    
+    # Add current message with fresh context
+    messages.append({"role": "user", "content": context_message})
+    
+    # Process with TIDE AI engine
+    from app.core.ai_engine import get_tide_engine, get_tide_system_prompt
+    
+    try:
+        tide = await get_tide_engine()
+        
+        # Include conversation history with fresh context
+        response_data = await tide.process_conversation(
+            messages=messages,
+            system_prompt=get_tide_system_prompt(),
+            context=context
+        )
+        
+        ai_content = response_data.get("content", "I'm having trouble processing that request.")
+        tool_calls_list = response_data.get("tool_calls")
+        
+        return TideChatResponse(
+            content=ai_content,
+            tool_calls=tool_calls_list
+        )
+        
+    except Exception as e:
+        print(f"❌ TIDE chat error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to process chat message"
+        )

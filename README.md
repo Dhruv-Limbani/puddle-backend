@@ -1,6 +1,112 @@
+# 🏗️ Puddle Data Marketplace
+
+A two-sided AI-powered marketplace connecting data buyers with data vendors through intelligent agents (ACID for buyers, TIDE for vendors).
+
+---
+
+## 📊 Architecture Overview
+
+```mermaid
+graph TD
+    %% STYLES
+    classDef frontend fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef backend fill:#fff3e0,stroke:#e65100,stroke-width:2px;
+    classDef ai fill:#f3e5f5,stroke:#4a148c,stroke-width:2px;
+    classDef db fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px;
+    classDef ext fill:#eceff1,stroke:#455a64,stroke-width:2px,stroke-dasharray: 5 5;
+
+    %% EXTERNAL ACTORS
+    Buyer([User: Buyer])
+    Vendor([User: Vendor])
+
+    %% FRONTEND LAYER
+    subgraph Client_Side ["Frontend :: React App"]
+        BuyerUI["Buyer Dashboard"]:::frontend
+        VendorUI["Vendor Dashboard"]:::frontend
+    end
+
+    %% BACKEND LAYER
+    subgraph Server_Side ["Backend :: FastAPI"]
+        API["API Gateway / Routes"]:::backend
+        
+        subgraph AI_Core ["AI Engine Module"]
+            ACID["ACID Agent<br/>(Buyer Persona)"]:::ai
+            TIDE["TIDE Agent<br/>(Vendor Persona)"]:::ai
+            ToolMgr["Tool Manager / MCP Client"]:::ai
+        end
+    end
+
+    %% EXTERNAL AI SERVICES
+    subgraph External_Svcs ["External Services"]
+        LLM["LLM Provider<br/>OpenRouter"]:::ext
+    end
+
+    %% DATA LAYER
+    subgraph Persistence ["PostgreSQL Database"]
+        Tables["Relational Tables<br/>Users, Datasets, Vendors"]:::db
+        VectorStore["pgvector<br/>Embeddings for Search"]:::db
+        InquiryState["Inquiries Table<br/>State: Submitted <-> Responded<br/>History: 'summary' column"]:::db
+    end
+
+    %% FLOWS - BUYER / ACID
+    Buyer -->|Interacts| BuyerUI
+    BuyerUI -->|REST/WS| API
+    API -->|Init| ACID
+    ACID <-->|Inference| LLM
+    ACID -->|"1. Semantic Search"| ToolMgr
+    ACID -->|"2. Create Inquiry (Status: Submitted)"| ToolMgr
+
+    %% FLOWS - VENDOR / TIDE
+    Vendor -->|Interacts| VendorUI
+    VendorUI -->|REST/WS| API
+    API -->|Init| TIDE
+    TIDE <-->|Inference| LLM
+    TIDE -->|"3. Get Work Queue (Status: Submitted)"| ToolMgr
+    TIDE -->|"4. Submit Response (Status: Responded)"| ToolMgr
+
+    %% TOOL EXECUTION FLOW
+    ToolMgr -->|"Semantic Search"| VectorStore
+    ToolMgr -->|"Read Metadata"| Tables
+    ToolMgr -->|"Write JSON & Summary"| InquiryState
+    ToolMgr -->|"Update JSON & Summary"| InquiryState
+
+    %% DATABASE LINKS
+    VectorStore -.-> Tables
+    InquiryState -.-> Tables
+```
+
+---
+
+# 🎬 Demo Video
+
+Check out our demo video to see Puddle in action:
+
+
+https://github.com/user-attachments/assets/9a7db748-2a93-4832-ba0d-c837760fab0e
+
+
+---
+
 # 🛠️ Local Development Setup Guide
 
-This guide will walk you through setting up the **backend**, **database**, and **frontend** for local development and testing.
+This guide will walk you through setting up the **MCP server**, **database**, **backend**, and **frontend** for local development and testing.
+
+---
+
+## 📌 0. Setup MCP Server (Required First)
+
+The MCP (Model Context Protocol) server provides AI agent tools for data discovery and inquiry management.
+
+```bash
+# Clone the MCP server repository
+git clone https://github.com/Dhruv-Limbani/puddle-mcp.git
+cd puddle-mcp
+
+# Follow the setup instructions in the puddle-mcp README
+# This will start the MCP server (typically on http://localhost:8002)
+```
+
+⚠️ **The MCP server MUST be running before starting the backend**, as the backend depends on it for AI tool execution.
 
 ---
 
@@ -77,6 +183,8 @@ Make sure to replace the placeholders in `DATABASE_URL` with your actual databas
 
 ## 🚀 6. Start the Backend Server
 
+**Make sure the MCP server is running (from step 0) before starting the backend.**
+
 Run:
 
 ```bash
@@ -130,17 +238,22 @@ This guide will walk you through setting up the **database**, **backend**, and *
 
 ---
 
-# ⚠️ Important Note!
+# ⚠️ Important Note: Startup Order
 
-Before running any part of the project:
+**Start services in this order:**
 
-* **Make sure your PostgreSQL database server is running.**
-* **Start the backend next.**
-* **Start the frontend last.**
+1. **PostgreSQL database server** - Must be running first
+2. **MCP Server** (`puddle-mcp` repository) - Backend depends on this
+3. **Backend** (FastAPI on port 8000) - Connects to MCP server
+4. **Frontend** (React SPA on port 8001) - Connects to backend
 
-If you see **“connection refused”** or **database connection errors**, it almost always means one of these services is not running.
-Double-check that:
+If you see **"connection refused"** or **database connection errors**, verify:
 
 * PostgreSQL server is active
-* Backend is running without errors
-* Frontend is running and pointing to the correct backend URL
+* MCP server is running (check its startup logs)
+* Backend is running and can reach MCP server
+* Frontend is running and pointing to the correct backend URL (`http://localhost:8000`)
+
+
+Test buyer: jack.bennett@amazon-retail.com
+Test vendor: sales@ecomanalytics.io

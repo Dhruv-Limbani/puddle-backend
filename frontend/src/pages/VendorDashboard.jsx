@@ -5,11 +5,13 @@ import VendorProfile from '../components/VendorProfile';
 import Marketplace from '../components/Marketplace';
 import DataCatalogTab from '../components/DataCatalog';
 import AgentManager from '../components/AgentManager';
+import TideInquiries from '../components/TideInquiries';
 import {
   ProfileIcon,
   MarketplaceIcon,
   DataCatalogIcon,
   AgentIcon,
+  InquiryIcon,
   PuddleLogoIcon,
   LogoutIcon,
   SidebarToggleIcon
@@ -23,6 +25,7 @@ export default function VendorDashboard() {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState('profile');
   const [isMinimized, setIsMinimized] = useState(false);
+  const [marketplaceView, setMarketplaceView] = useState({ type: 'list', id: null });
 
   useEffect(() => {
     // This logic is fine, it will set the tab based on the URL
@@ -36,7 +39,8 @@ export default function VendorDashboard() {
   const navigationItems = [
     { id: 'profile', label: 'Profile', desc:'Manage your vendor presence on Puddle', icon: ProfileIcon },
     { id: 'marketplace', label: 'Marketplace', desc:'Search Datasets and Vendors', icon: MarketplaceIcon },
-    { id: 'data-catalog', label: 'Data Catalog', desc:'Manage your datasets and columns', icon: DataCatalogIcon }, // <-- UPDATED DESCRIPTION
+    { id: 'data-catalog', label: 'Data Catalog', desc:'Manage your datasets and columns', icon: DataCatalogIcon },
+    { id: 'inquiries', label: 'Inquiries', desc:'Manage buyer inquiries with TIDE', icon: InquiryIcon },
     { id: 'agents', label: 'AI Agents', desc:'Configure your AI agents', icon: AgentIcon },
   ];
 
@@ -47,14 +51,21 @@ export default function VendorDashboard() {
     // navigate(item.path); // Uncomment if you want URL-based navigation
   };
 
+  const handleNavigateToDataset = (datasetId) => {
+    setMarketplaceView({ type: 'dataset', id: datasetId });
+    setActiveTab('marketplace');
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case 'profile':
         return <VendorProfile />;
       case 'marketplace':
-        return <Marketplace />;
+        return <Marketplace view={marketplaceView} setView={setMarketplaceView} />;
       case 'data-catalog':
         return <DataCatalogTab />;
+      case 'inquiries':
+        return <TideInquiries onNavigateToDataset={handleNavigateToDataset} />;
       case 'agents':
         return <AgentManager />;
       default:

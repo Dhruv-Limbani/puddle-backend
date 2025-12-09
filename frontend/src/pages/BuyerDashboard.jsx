@@ -3,9 +3,13 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import BuyerProfile from '../components/BuyerProfile';
 import Marketplace from '../components/Marketplace';
+import AcidChat from '../components/AcidChat';
+import InquiryList from '../components/InquiryList';
 import {
   ProfileIcon,
   MarketplaceIcon,
+  ChatIcon,
+  InquiryIcon,
   PuddleLogoIcon,
   LogoutIcon,
   SidebarToggleIcon
@@ -29,6 +33,8 @@ export default function BuyerDashboard() {
   const navigationItems = [
     { id: 'profile', label: 'Profile', desc: 'Manage your buyer profile', icon: ProfileIcon },
     { id: 'marketplace', label: 'Marketplace', desc: 'Search Datasets and Vendors', icon: MarketplaceIcon },
+    { id: 'ai-assistant', label: 'AI Assistant', desc: 'Chat with ACID for dataset discovery', icon: ChatIcon },
+    { id: 'inquiries', label: 'My Inquiries', desc: 'Track and manage your inquiries', icon: InquiryIcon },
   ];
 
   const handleNavigation = (item) => {
@@ -41,6 +47,10 @@ export default function BuyerDashboard() {
         return <BuyerProfile />;
       case 'marketplace':
         return <Marketplace />;
+      case 'ai-assistant':
+        return <AcidChat />;
+      case 'inquiries':
+        return <InquiryList />;
       default:
         return <BuyerProfile />;
     }
@@ -55,7 +65,6 @@ export default function BuyerDashboard() {
             <PuddleLogoIcon />
             <h2>Puddle</h2>
           </div>
-          
           <button 
             className="sidebar-toggle" 
             onClick={() => setIsMinimized(!isMinimized)}

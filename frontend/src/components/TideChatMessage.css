@@ -1,0 +1,307 @@
+/* TIDE Chat Message Styles - Compact version for inquiry detail view */
+
+.tide-chat-message {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  max-width: 100%;
+  width: 100%; /* Ensure it takes full width of container for proper alignment */
+  animation: tide-messageSlideIn 0.3s ease-out;
+}
+
+@keyframes tide-messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tide-align-left {
+  flex-direction: row;
+  justify-content: flex-start;
+}
+
+.tide-align-right {
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+}
+
+.tide-message-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--primary-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--primary-600);
+}
+
+.tide-user-message .tide-message-avatar {
+  background: var(--primary-600);
+  color: white;
+}
+
+.tide-message-avatar svg {
+  width: 16px;
+  height: 16px;
+}
+
+.tide-message-content {
+  max-width: 70%;
+  min-width: 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tide-message-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.tide-message-sender {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--primary-700);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tide-message-time {
+  font-size: 10px;
+  color: var(--primary-400);
+}
+
+.tide-message-text {
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.tide-ai-message .tide-message-text {
+  background: white;
+  color: var(--primary-900);
+  border: 1px solid var(--accent-200);
+}
+
+.tide-user-message .tide-message-text {
+  background: var(--primary-600);
+  color: white;
+  border: 1px solid var(--primary-600);
+}
+
+.tide-message-text strong {
+  font-weight: 600;
+}
+
+.tide-message-text em {
+  font-style: italic;
+}
+
+/* Markdown Styling for TIDE */
+.tide-message-text h1,
+.tide-message-text h2,
+.tide-message-text h3,
+.tide-message-text h4 {
+  margin: 10px 0 6px 0;
+  font-weight: 600;
+}
+
+.tide-message-text h3 {
+  font-size: 14px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  padding-bottom: 3px;
+}
+
+.tide-ai-message .tide-message-text h3 {
+  border-bottom-color: var(--accent-200);
+}
+
+.tide-user-message .tide-message-text h3 {
+  border-bottom-color: rgba(255, 255, 255, 0.3);
+}
+
+.tide-message-text p {
+  margin: 6px 0;
+}
+
+.tide-message-text p:first-child {
+  margin-top: 0;
+}
+
+.tide-message-text p:last-child {
+  margin-bottom: 0;
+}
+
+.tide-message-text ul,
+.tide-message-text ol {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+
+.tide-message-text li {
+  margin: 4px 0;
+}
+
+.tide-message-text code {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+}
+
+.tide-user-message .tide-message-text code {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.tide-message-text pre {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 8px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 6px 0;
+}
+
+.tide-user-message .tide-message-text pre {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.tide-message-text pre code {
+  background: none;
+  padding: 0;
+}
+
+.tide-message-text table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 8px 0;
+  font-size: 12px;
+}
+
+.tide-message-text th,
+.tide-message-text td {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.tide-ai-message .tide-message-text th,
+.tide-ai-message .tide-message-text td {
+  border-color: var(--accent-200);
+}
+
+.tide-user-message .tide-message-text th,
+.tide-user-message .tide-message-text td {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.tide-message-text th {
+  background: rgba(0, 0, 0, 0.03);
+  font-weight: 600;
+}
+
+.tide-user-message .tide-message-text th {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.tide-message-text blockquote {
+  border-left: 3px solid rgba(0, 0, 0, 0.2);
+  padding-left: 10px;
+  margin: 6px 0;
+  font-style: italic;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.tide-user-message .tide-message-text blockquote {
+  border-left-color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Typing indicator for TIDE */
+.tide-typing-message {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  width: 100%;
+  flex-direction: row;
+  justify-content: flex-start;
+}
+
+.tide-typing-message .tide-message-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--primary-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--primary-600);
+}
+
+.tide-typing-message .tide-message-content {
+  padding: 10px 14px;
+  background: white;
+  border: 1px solid var(--accent-200);
+  border-radius: 12px;
+  min-width: 60px;
+}
+
+.tide-typing-indicator {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.tide-typing-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--primary-400);
+  border-radius: 50%;
+  animation: tide-typing-bounce 1.4s infinite;
+}
+
+.tide-typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.tide-typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes tide-typing-bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.7;
+  }
+  30% {
+    transform: translateY(-8px);
+    opacity: 1;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .tide-message-content {
+    max-width: 85%;
+  }
+  
+  .tide-message-text {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+}

@@ -6,15 +6,19 @@ import DatasetProfile from './DatasetProfile'
 import PublicVendorProfile from './PublicVendorProfile'
 import './Marketplace.css'
 
-export default function Marketplace() {
+export default function Marketplace({ view: externalView, setView: externalSetView }) {
   const { token } = useAuth()
   const [datasets, setDatasets] = useState([])
   const [vendors, setVendors] = useState([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  // Local navigation state
-  const [view, setView] = useState({ type: 'list', id: null })
+  // Local navigation state (fallback if not provided)
+  const [internalView, setInternalView] = useState({ type: 'list', id: null })
+  
+  // Use external state if provided, otherwise use internal state
+  const view = externalView || internalView
+  const setView = externalSetView || setInternalView
 
   useEffect(() => {
     const loadData = async () => {
