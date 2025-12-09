@@ -77,6 +77,14 @@ graph TD
 
 ---
 
+# 🎬 Demo Video
+
+Check out our demo video to see Puddle in action:
+
+[![Puddle Demo Video](https://img.shields.io/badge/Watch%20Demo-▶%20Video-blue?style=for-the-badge)](VIDEO_URL_HERE)
+
+---
+
 # 🛠️ Local Development Setup Guide
 
 This guide will walk you through setting up the **backend**, **database**, and **frontend** for local development and testing.
